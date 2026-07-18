@@ -1,0 +1,11 @@
+<svg width="800" height="150" viewBox="0 0 800 150" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .h { font-family: Arial, Helvetica, sans-serif; font-weight: 900; font-size: 60px; fill: #00933C; letter-spacing: -2px; }
+    .c { font-family: Arial, Helvetica, sans-serif; font-weight: 400; font-size: 60px; fill: #00933C; letter-spacing: 0px; }
+    .i { font-family: 'Segoe UI', Arial, sans-serif; font-weight: 400; font-size: 42px; fill: #4a4a4a; letter-spacing: 1px; }
+  </style>
+  <text x="10" y="80">
+    <tspan class="h">HEIDELBERG</tspan><tspan class="c">CEMENT</tspan>
+  </text>
+  <text x="590" y="125" class="i" text-anchor="end">INDIA</text>
+</svg>

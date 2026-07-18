@@ -1,0 +1,173 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+/* Enforce class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+  }
+  
+  :root {
+    /* Premium Light Theme - Crisp and Clean */
+    --background: oklch(0.98 0.005 250); /* Very light cool gray */
+    --foreground: oklch(0.2 0.02 250); /* Deep slate */
+    
+    --card: oklch(1 0 0); /* Pure white */
+    --card-foreground: oklch(0.2 0.02 250);
+    
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.2 0.02 250);
+    
+    --primary: oklch(0.5 0.2 265); /* Vibrant Indigo */
+    --primary-foreground: oklch(0.98 0 0);
+    
+    --secondary: oklch(0.96 0.02 250);
+    --secondary-foreground: oklch(0.3 0.05 250);
+    
+    --muted: oklch(0.96 0.01 250);
+    --muted-foreground: oklch(0.5 0.02 250);
+    
+    --accent: oklch(0.6 0.15 200); /* Vibrant Teal */
+    --accent-foreground: oklch(0.98 0 0);
+    
+    --destructive: oklch(0.6 0.2 20);
+    --destructive-foreground: oklch(0.98 0 0);
+    
+    --border: oklch(0.92 0.01 250);
+    --input: oklch(0.92 0.01 250);
+    --ring: oklch(0.5 0.2 265);
+    
+    --radius: 1rem;
+  }
+
+  .dark {
+    /* Premium Dark Theme - Midnight Slate */
+    --background: oklch(0.18 0.01 260); /* Deep slate-gray */
+    --foreground: oklch(0.95 0.01 255);
+    
+    --card: oklch(0.22 0.02 260); /* Slightly lighter slate */
+    --card-foreground: oklch(0.95 0.01 255);
+    
+    --popover: oklch(0.22 0.02 260);
+    --popover-foreground: oklch(0.95 0.01 255);
+    
+    --primary: oklch(0.65 0.2 270); /* Glowing Indigo */
+    --primary-foreground: oklch(0.1 0.05 260);
+    
+    --secondary: oklch(0.25 0.03 260);
+    --secondary-foreground: oklch(0.95 0.01 255);
+    
+    --muted: oklch(0.25 0.02 260);
+    --muted-foreground: oklch(0.7 0.03 260);
+    
+    --accent: oklch(0.7 0.15 200); /* Electric Cyan/Teal */
+    --accent-foreground: oklch(0.1 0.05 200);
+    
+    --destructive: oklch(0.7 0.2 20);
+    --destructive-foreground: oklch(0.98 0 0);
+    
+    --border: oklch(0.3 0.03 260);
+    --input: oklch(0.3 0.03 260);
+    --ring: oklch(0.65 0.2 270);
+  }
+
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow, transform;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    /* Very subtle noise/mesh gradient background for premium feel */
+    background-image: 
+      radial-gradient(at 0% 0%, oklch(0.96 0.02 250 / 80%) 0px, transparent 40%),
+      radial-gradient(at 100% 100%, oklch(0.95 0.03 260 / 60%) 0px, transparent 40%);
+    background-attachment: fixed;
+  }
+  
+  .dark body {
+    background-image: 
+      radial-gradient(at 0% 0%, oklch(0.22 0.04 260 / 50%) 0px, transparent 40%),
+      radial-gradient(at 100% 100%, oklch(0.2 0.05 270 / 50%) 0px, transparent 40%);
+  }
+  
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Polished Glassmorphism Utility */
+@utility glass {
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+}
+
+.dark @utility glass {
+  background: color-mix(in srgb, var(--card) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Custom Scrollbar for sleekness */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

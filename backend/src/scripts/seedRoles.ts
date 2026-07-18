@@ -1,0 +1,94 @@
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+import Admin from '../models/Admin';
+import Doctor from '../models/Doctor';
+import Patient from '../models/Patient';
+import Staff from '../models/Staff';
+
+dotenv.config();
+
+const seedRoles = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/hci-hms');
+        console.log('Connected to MongoDB');
+
+        // Drop existing collections (optional, be careful in prod)
+        try {
+            await mongoose.connection.db.dropCollection('users');
+            await mongoose.connection.db.dropCollection('roles');
+            console.log('Dropped old users and roles collections');
+        } catch (e) {
+            console.log('No old collections to drop');
+        }
+        
+        await Admin.deleteMany({});
+        await Doctor.deleteMany({});
+        await Patient.deleteMany({});
+        await Staff.deleteMany({});
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash('password123', salt);
+
+        // 1. Seed Admin
+        await Admin.create({
+            name: 'Super Admin',
+            email: 'admin@heidelberg.in',
+            passwordHash,
+            isActive: true
+        });
+        console.log('Seeded Admin');
+
+        // 2. Seed Doctor
+        await Doctor.create({
+            name: 'Dr. Rahul Sharma',
+            specialization: 'General Physician',
+            department: 'OPD',
+            phone: '9876543210',
+            email: 'doctor@heidelberg.in',
+            passwordHash,
+            availableDays: ['Monday', 'Wednesday', 'Friday'],
+            availableTimeStart: '09:00',
+            availableTimeEnd: '17:00',
+            roomNumber: '101',
+            isActive: true
+        });
+        console.log('Seeded Doctor');
+
+        // 3. Seed Patient
+        await Patient.create({
+            name: 'Amit Kumar',
+            gender: 'Male',
+            dob: new Date('1985-06-15'),
+            bloodGroup: 'O+',
+            phone: '9876543211',
+            email: 'patient@heidelberg.in',
+            passwordHash,
+            address: 'Damoh Plant Quarter',
+            emergencyContact: '9876543212',
+            chronicDiseases: [],
+            allergies: [],
+            familyHistory: 'None',
+            vaccinationHistory: ['Covid-19']
+        });
+        console.log('Seeded Patient');
+
+        // 4. Seed Staff (Pharmacy)
+        await Staff.create({
+            name: 'Priya Patel',
+            email: 'pharmacy@heidelberg.in',
+            passwordHash,
+            department: 'Pharmacy',
+            isActive: true
+        });
+        console.log('Seeded Staff');
+
+        console.log('Successfully seeded database with role-based auth.');
+        process.exit(0);
+    } catch (error) {
+        console.error('Error seeding roles:', error);
+        process.exit(1);
+    }
+};
+
+seedRoles();
