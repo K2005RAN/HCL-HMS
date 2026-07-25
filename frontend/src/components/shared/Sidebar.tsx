@@ -10,7 +10,8 @@ import {
   LogOut,
   Activity,
   IndianRupee,
-  ShieldAlert
+  ShieldAlert,
+  History
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -21,10 +22,11 @@ const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin'] },
   { name: 'Appointments', href: '/appointments', icon: Calendar, roles: ['admin', 'staff'] },
   { name: 'Doctor Portal', href: '/doctor-dashboard', icon: Stethoscope, roles: ['admin', 'doctor'] },
+  { name: 'Patient History', href: '/doctor-history', icon: History, roles: ['admin', 'doctor'] },
   { name: 'Employees', href: '/employees', icon: Users, roles: ['admin'] },
   { name: 'Attendance', href: '/attendance', icon: Activity, roles: ['admin', 'staff'] },
-  { name: 'Pharmacy', href: '/pharmacy', icon: Pill, roles: ['admin', 'doctor'] },
-  { name: 'Laboratory', href: '/lab', icon: TestTube, roles: ['admin', 'doctor'] },
+  { name: 'Pharmacy', href: '/pharmacy', icon: Pill, roles: ['admin', 'pharmacy'] },
+  { name: 'Laboratory', href: '/lab', icon: TestTube, roles: ['admin', 'lab'] },
   { name: 'Billing', href: '/billing', icon: IndianRupee, roles: ['admin'] },
   { name: 'User Management', href: '/user-management', icon: Users, roles: ['admin'] },
   { name: 'Audit Logs', href: '/audit-logs', icon: ShieldAlert, roles: ['admin'] },

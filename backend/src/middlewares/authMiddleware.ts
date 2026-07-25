@@ -30,8 +30,11 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction): vo
 
 export const authorize = (...roles: string[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction): void => {
+        const userRole = req.user?.role?.toLowerCase();
         const allowedRoles = roles.map(r => r.toLowerCase());
-        if (!req.user || !allowedRoles.includes(req.user.role)) {
+        
+        // Admin / Super Admin always bypasses specific role restrictions
+        if (!req.user || (!allowedRoles.includes(userRole) && userRole !== 'admin' && userRole !== 'super admin')) {
             res.status(403).json({ message: 'User role not authorized' });
             return;
         }

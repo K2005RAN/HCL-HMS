@@ -3,10 +3,17 @@ import axios from 'axios';
 
 interface User {
   id: string;
-  username: string;
+  name?: string;
+  username?: string;
   email: string;
   role: string;
   employeeId?: string;
+  doctorId?: string;
+  patientId?: string;
+  staffId?: string;
+  adminId?: string;
+  department?: string;
+  specialization?: string;
 }
 
 interface AuthContextType {
@@ -29,10 +36,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
-    if (storedToken && storedUser) {
+    if (storedToken) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Failed to parse stored user:', e);
+        }
+      }
+
+      // Fetch fresh user profile details from backend
+      axios.get('http://localhost:5000/api/auth/me', {
+        headers: { Authorization: `Bearer ${storedToken}` }
+      })
+      .then(res => {
+        if (res.data) {
+          setUser(res.data);
+          localStorage.setItem('user', JSON.stringify(res.data));
+        }
+      })
+      .catch(err => {
+        console.error('Failed to refresh user profile from backend:', err);
+      });
     }
     setIsInitialized(true);
   }, []);

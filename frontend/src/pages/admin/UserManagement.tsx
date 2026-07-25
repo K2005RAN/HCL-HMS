@@ -46,6 +46,7 @@ export default function UserManagement() {
       }
       if (formData.role === 'doctor') {
         payload.specialization = formData.specialization;
+        payload.department = formData.department || 'OPD';
       }
 
       // We use the new admin-specific endpoint to handle custom ID generation
@@ -171,10 +172,16 @@ export default function UserManagement() {
                 )}
 
                 {formData.role === 'doctor' && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2 col-span-full md:col-span-1">
-                    <Label htmlFor="specialization">Specialization</Label>
-                    <Input id="specialization" placeholder="e.g. Cardiology, General Physician" value={formData.specialization} onChange={handleChange} required className="bg-background/50" />
-                  </motion.div>
+                  <>
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2 col-span-full md:col-span-1">
+                      <Label htmlFor="specialization">Specialization</Label>
+                      <Input id="specialization" placeholder="e.g. Cardiology, General Physician" value={formData.specialization} onChange={handleChange} required className="bg-background/50" />
+                    </motion.div>
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2 col-span-full md:col-span-1">
+                      <Label htmlFor="department">Department</Label>
+                      <Input id="department" placeholder="e.g. OPD, Cardiology (Default: OPD)" value={formData.department} onChange={handleChange} className="bg-background/50" />
+                    </motion.div>
+                  </>
                 )}
               </div>
 

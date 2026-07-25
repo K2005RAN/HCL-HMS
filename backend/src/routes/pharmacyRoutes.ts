@@ -1,15 +1,17 @@
-import { Router } from 'express';
-import { getMedicines, issueMedicine, addMedicine } from '../controllers/pharmacyController';
+import express from 'express';
+import { getMedicines, issueMedicine, addMedicine, getPrescriptions, dispenseAndBill } from '../controllers/pharmacyController';
 import { protect, authorize } from '../middlewares/authMiddleware';
 
-const router = Router();
+const router = express.Router();
 
 router.use(protect);
 
 router.route('/medicines')
-    .get(authorize('Pharmacist', 'Super Admin', 'Doctor', 'Admin', 'Staff'), getMedicines)
-    .post(authorize('Pharmacist', 'Super Admin', 'Admin', 'Staff'), addMedicine);
+    .get(authorize('pharmacy', 'staff', 'admin', 'doctor'), getMedicines)
+    .post(authorize('pharmacy', 'staff', 'admin'), addMedicine);
 
-router.post('/medicines/issue', authorize('Pharmacist', 'Super Admin', 'Admin', 'Staff'), issueMedicine);
+router.post('/medicines/issue', authorize('pharmacy', 'staff', 'admin'), issueMedicine);
+router.get('/prescriptions', authorize('pharmacy', 'staff', 'admin', 'doctor'), getPrescriptions);
+router.post('/dispense-and-bill', authorize('pharmacy', 'staff', 'admin'), dispenseAndBill);
 
 export default router;

@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Printer, Trash2, FileText } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { openPdfReport } from '@/lib/utils';
 
 export default function ConsultationView() {
   const navigate = useNavigate();
@@ -28,6 +29,23 @@ export default function ConsultationView() {
   const [prescription, setPrescription] = useState<any[]>([]);
   const [medInput, setMedInput] = useState({ medicineName: '', dosage: '', duration: '' });
 
+  // Lab Test State
+  const [patientLabTests, setPatientLabTests] = useState<any[]>([]);
+  const [selectedPresetTest, setSelectedPresetTest] = useState('');
+  const [labTestInput, setLabTestInput] = useState({ testName: '', category: 'Hematology', remarks: '' });
+  const [orderingLab, setOrderingLab] = useState(false);
+
+  const fetchPatientLabTests = async (patientIdStr: string) => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/lab/patient/${patientIdStr}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPatientLabTests(res.data);
+    } catch (err) {
+      console.error("Failed to fetch lab tests for patient", err);
+    }
+  };
+
   useEffect(() => {
     const fetchAppointment = async () => {
       try {
@@ -35,6 +53,9 @@ export default function ConsultationView() {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAppointment(res.data);
+        if (res.data?.patientId?._id) {
+          fetchPatientLabTests(res.data.patientId._id);
+        }
       } catch (err) {
         console.error("Failed to fetch appointment", err);
       } finally {
@@ -45,6 +66,53 @@ export default function ConsultationView() {
       fetchAppointment();
     }
   }, [token, appointmentId]);
+
+  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedPresetTest(val);
+    if (val && val !== 'custom') {
+      let category = 'General';
+      if (val.includes('CBC') || val.includes('Blood')) category = 'Hematology';
+      else if (val.includes('Lipid') || val.includes('Sugar') || val.includes('LFT') || val.includes('KFT') || val.includes('Thyroid')) category = 'Biochemistry';
+      else if (val.includes('Urine')) category = 'Pathology';
+      else if (val.includes('X-Ray') || val.includes('ECG')) category = 'Radiology';
+      setLabTestInput({ ...labTestInput, testName: val, category });
+    } else if (val === 'custom') {
+      setLabTestInput({ ...labTestInput, testName: '', category: 'General' });
+    }
+  };
+
+  const handleOrderLabTest = async () => {
+    if (!labTestInput.testName.trim()) {
+      alert("Please select or enter a lab test name.");
+      return;
+    }
+    const patientIdVal = appointment?.patientId?._id || appointment?.patientId;
+    if (!patientIdVal) {
+      alert("Patient details not found.");
+      return;
+    }
+    setOrderingLab(true);
+    try {
+      await axios.post('http://localhost:5000/api/lab/order', {
+        patientId: patientIdVal,
+        testName: labTestInput.testName,
+        category: labTestInput.category,
+        remarks: labTestInput.remarks
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`Lab test "${labTestInput.testName}" ordered successfully!`);
+      setLabTestInput({ testName: '', category: 'Hematology', remarks: '' });
+      setSelectedPresetTest('');
+      fetchPatientLabTests(patientIdVal);
+    } catch (err: any) {
+      console.error("Failed to order lab test", err);
+      alert("Failed to order lab test: " + (err.response?.data?.message || err.message));
+    } finally {
+      setOrderingLab(false);
+    }
+  };
 
   const handleAddMedicine = () => {
     if (medInput.medicineName && medInput.dosage && medInput.duration) {
@@ -66,12 +134,21 @@ export default function ConsultationView() {
     }
 
     try {
+      const finalPrescription = [...prescription];
+      if (medInput.medicineName.trim()) {
+        finalPrescription.push({
+          medicineName: medInput.medicineName.trim(),
+          dosage: medInput.dosage.trim() || '1-0-1',
+          duration: medInput.duration.trim() || '5 Days'
+        });
+      }
+
       const payload = {
         vitals,
         symptoms,
         diagnosis,
         notes,
-        prescription
+        prescription: finalPrescription
       };
       
       await axios.post(`http://localhost:5000/api/doctor/consultation/${appointmentId}`, payload, {
@@ -180,6 +257,7 @@ export default function ConsultationView() {
                 <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
                   <TabsTrigger value="diagnosis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6">Diagnosis</TabsTrigger>
                   <TabsTrigger value="prescription" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6">Prescription</TabsTrigger>
+                  <TabsTrigger value="lab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6">Lab Test Orders</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="diagnosis" className="p-6 space-y-4">
@@ -263,6 +341,136 @@ export default function ConsultationView() {
                         </div>
                       )}
                     </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="lab" className="p-6 space-y-6">
+                  <div className="bg-muted/30 p-4 rounded-xl border border-border/50 space-y-4">
+                    <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                      Order New Lab Test
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Select Preset Test or Custom</Label>
+                        <select 
+                          value={selectedPresetTest}
+                          onChange={handlePresetChange}
+                          className="w-full h-10 px-3 rounded-md border border-input bg-background/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="">Select Lab Test...</option>
+                          <option value="Complete Blood Count (CBC)">Complete Blood Count (CBC)</option>
+                          <option value="Lipid Profile">Lipid Profile</option>
+                          <option value="Liver Function Test (LFT)">Liver Function Test (LFT)</option>
+                          <option value="Kidney Function Test (KFT)">Kidney Function Test (KFT)</option>
+                          <option value="Fasting Blood Sugar (FBS)">Fasting Blood Sugar (FBS)</option>
+                          <option value="Postprandial Blood Sugar (PPBS)">Postprandial Blood Sugar (PPBS)</option>
+                          <option value="HbA1c">HbA1c</option>
+                          <option value="Urine Routine & Microscopy">Urine Routine & Microscopy</option>
+                          <option value="Chest X-Ray">Chest X-Ray</option>
+                          <option value="ECG 12 Lead">ECG 12 Lead</option>
+                          <option value="Thyroid Profile (T3, T4, TSH)">Thyroid Profile (T3, T4, TSH)</option>
+                          <option value="custom">-- Type Custom Test Name --</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Test Name</Label>
+                        <Input 
+                          placeholder="e.g. Vitamin D3 level" 
+                          value={labTestInput.testName} 
+                          onChange={e => setLabTestInput({ ...labTestInput, testName: e.target.value })} 
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Category</Label>
+                        <select 
+                          value={labTestInput.category}
+                          onChange={e => setLabTestInput({ ...labTestInput, category: e.target.value })}
+                          className="w-full h-10 px-3 rounded-md border border-input bg-background/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="Hematology">Hematology</option>
+                          <option value="Biochemistry">Biochemistry</option>
+                          <option value="Pathology">Pathology</option>
+                          <option value="Radiology">Radiology</option>
+                          <option value="Microbiology">Microbiology</option>
+                          <option value="General">General</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Clinical Instructions / Remarks</Label>
+                        <Input 
+                          placeholder="e.g. Fasting sample required" 
+                          value={labTestInput.remarks} 
+                          onChange={e => setLabTestInput({ ...labTestInput, remarks: e.target.value })} 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={handleOrderLabTest} disabled={orderingLab || !labTestInput.testName.trim()}>
+                        {orderingLab ? 'Ordering...' : 'Order Lab Test'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm text-foreground">Lab Test Orders & Reports History</h4>
+                    {patientLabTests.length > 0 ? (
+                      <div className="border border-border/50 rounded-xl overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-muted text-muted-foreground border-b border-border/50">
+                            <tr>
+                              <th className="px-4 py-3 font-medium">Test Name</th>
+                              <th className="px-4 py-3 font-medium">Category</th>
+                              <th className="px-4 py-3 font-medium">Status</th>
+                              <th className="px-4 py-3 font-medium">Result Notes / Findings</th>
+                              <th className="px-4 py-3 font-medium">Date Requested</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {patientLabTests.map((t: any) => (
+                              <tr key={t._id} className="bg-card">
+                                <td className="px-4 py-3 font-semibold">{t.testName}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{t.category}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                    t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                    t.status === 'Sample Collected' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
+                                    'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                  }`}>
+                                    {t.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  <div>{t.resultNotes || (t.status === 'Completed' ? 'Report ready' : 'Awaiting results from lab')}</div>
+                                  {t.pdfReportUrl && (
+                                    <div className="mt-1.5">
+                                      <button 
+                                        type="button"
+                                        onClick={() => openPdfReport(t.pdfReportUrl)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-xs font-semibold border border-primary/20 transition-all shadow-sm cursor-pointer"
+                                      >
+                                        <FileText className="h-3.5 w-3.5" /> View Uploaded PDF Report
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {new Date(t.createdAt).toLocaleDateString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-sm text-muted-foreground bg-slate-50/50 rounded-xl border border-dashed">
+                        No lab test orders recorded for this patient.
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>

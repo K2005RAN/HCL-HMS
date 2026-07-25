@@ -75,13 +75,24 @@ const seedRoles = async () => {
 
         // 4. Seed Staff (Pharmacy)
         await Staff.create({
+            staffId: 'STF-0001',
             name: 'Priya Patel',
             email: 'pharmacy@heidelberg.in',
             passwordHash,
             department: 'Pharmacy',
             isActive: true
         });
-        console.log('Seeded Staff');
+
+        // 5. Seed Staff (Lab Incharge)
+        await Staff.create({
+            staffId: 'STF-0002',
+            name: 'Lab Incharge',
+            email: 'lab@heidelberg.in',
+            passwordHash,
+            department: 'Laboratory',
+            isActive: true
+        });
+        console.log('Seeded Staff & Lab Incharge');
 
         console.log('Successfully seeded database with role-based auth.');
         process.exit(0);

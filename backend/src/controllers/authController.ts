@@ -15,6 +15,8 @@ const getModelByRole = (role: string) => {
         case 'doctor': return Doctor;
         case 'patient': return Patient;
         case 'staff': return Staff;
+        case 'lab': return Staff;
+        case 'pharmacy': return Staff;
         default: return null;
     }
 };
@@ -72,15 +74,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             ipAddress: req.ip || req.connection?.remoteAddress || 'Unknown'
         });
 
+        const userObj = user.toObject();
+        delete userObj.passwordHash;
+        userObj.role = role.toLowerCase();
+
         res.json({
             token,
-            user: {
-                id: user._id,
-                name: (user as any).name,
-                email: (user as any).email,
-                role: role.toLowerCase(),
-                ...(role.toLowerCase() === 'staff' && { department: (user as any).department })
-            }
+            user: userObj
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -158,19 +158,82 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
             customIdField = { employeeId: `EMP-${paddedCount}` };
         }
 
+        const roleLower = role.toLowerCase();
+        const roleSpecificData: any = {};
+
+        if (roleLower === 'doctor') {
+            roleSpecificData.specialization = otherData.specialization || 'General Physician';
+            roleSpecificData.department = department || 'General';
+            roleSpecificData.availableDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            roleSpecificData.availableTimeStart = '09:00';
+            roleSpecificData.availableTimeEnd = '17:00';
+        } else if (roleLower === 'staff') {
+            roleSpecificData.department = department || 'General';
+        } else if (roleLower === 'patient') {
+            roleSpecificData.gender = otherData.gender || 'Male';
+            roleSpecificData.dob = otherData.dob || new Date('1990-01-01');
+            roleSpecificData.address = otherData.address || 'N/A';
+            roleSpecificData.emergencyContact = otherData.emergencyContact || 'N/A';
+        }
+
         const newUser = new Model({
             email,
             passwordHash,
             name,
-            ...(role.toLowerCase() === 'staff' && { department }),
             ...customIdField,
+            ...roleSpecificData,
             ...otherData
         });
 
         await newUser.save();
 
         res.status(201).json({ message: 'User created successfully', user: newUser });
+    } catch (error: any) {
+        console.error('Error in adminCreateUser:', error);
+        res.status(400).json({ message: error.message || 'Server error', error });
+    }
+};
+
+export const getMe = async (req: any, res: Response): Promise<void> => {
+    try {
+        if (!req.user || (!req.user.id && !req.user._id)) {
+            res.status(401).json({ message: 'Not authorized' });
+            return;
+        }
+
+        const userId = req.user.id || req.user._id;
+        const userRole = req.user.role || 'user';
+
+        const models = [Admin, Doctor, Patient, Staff];
+        let foundUser: any = null;
+
+        const PrimaryModel = getModelByRole(userRole);
+        if (PrimaryModel) {
+            foundUser = await PrimaryModel.findById(userId).select('-passwordHash');
+        }
+
+        if (!foundUser) {
+            for (const Model of models) {
+                foundUser = await Model.findById(userId).select('-passwordHash');
+                if (foundUser) break;
+            }
+        }
+
+        if (foundUser) {
+            const userObj = foundUser.toObject();
+            userObj.role = userRole;
+            res.json(userObj);
+            return;
+        }
+
+        res.json({
+            id: userId,
+            name: req.user.name || 'User',
+            email: req.user.email || 'N/A',
+            role: userRole
+        });
     } catch (error) {
+        console.error('Error in getMe:', error);
         res.status(500).json({ message: 'Server error', error });
     }
 };

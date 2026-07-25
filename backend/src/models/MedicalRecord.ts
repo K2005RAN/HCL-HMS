@@ -25,6 +25,9 @@ export interface IMedicalRecord extends Document {
     labRequests: string[];
     followUpDate?: Date;
     fitnessCertificateIssued: boolean;
+    pharmacyStatus?: string; // Pending, Dispensed
+    pharmacyBilledAmount?: number;
+    dispensedAt?: Date;
 }
 
 const MedicalRecordSchema: Schema = new Schema({
@@ -49,7 +52,10 @@ const MedicalRecordSchema: Schema = new Schema({
     }],
     labRequests: [{ type: String }],
     followUpDate: { type: Date },
-    fitnessCertificateIssued: { type: Boolean, default: false }
+    fitnessCertificateIssued: { type: Boolean, default: false },
+    pharmacyStatus: { type: String, default: 'Pending' },
+    pharmacyBilledAmount: { type: Number, default: 0 },
+    dispensedAt: { type: Date }
 }, {
     timestamps: true
 });

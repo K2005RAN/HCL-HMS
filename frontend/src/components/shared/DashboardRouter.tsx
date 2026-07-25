@@ -15,6 +15,10 @@ export default function DashboardRouter() {
       return <SuperAdminDashboard />;
     case 'doctor':
       return <Navigate to="/doctor-dashboard" replace />;
+    case 'pharmacy':
+      return <Navigate to="/pharmacy" replace />;
+    case 'lab':
+      return <Navigate to="/lab" replace />;
     case 'staff':
       // Staff is now restricted to appointments and attendance. Defaulting to appointments.
       return <Navigate to="/appointments" replace />;

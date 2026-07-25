@@ -8,6 +8,7 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard'; // Still needed f
 import EmployeeList from './pages/employees/EmployeeList';
 import AppointmentCalendar from './pages/appointments/AppointmentCalendar';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
+import DoctorHistoryPage from './pages/doctor/DoctorHistoryPage';
 import ConsultationView from './pages/doctor/ConsultationView';
 import ConsultationHistoryView from './pages/doctor/ConsultationHistoryView';
 import PharmacyDashboard from './pages/pharmacy/PharmacyDashboard';
@@ -18,6 +19,7 @@ import BillingDashboard from './pages/billing/BillingDashboard';
 import AuditLogsView from './pages/admin/AuditLogsView';
 import UserManagement from './pages/admin/UserManagement';
 import PatientDashboard from './pages/patient/PatientDashboard';
+import ProfilePage from './pages/ProfilePage';
 
 import RegisterPage from './pages/RegisterPage';
 
@@ -33,6 +35,7 @@ function App() {
             <Route element={<DashboardLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardRouter />} />
+              <Route path="profile" element={<ProfilePage />} />
               
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="employees" element={<EmployeeList />} />
@@ -46,18 +49,19 @@ function App() {
                 <Route path="appointments" element={<AppointmentCalendar />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['doctor']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'doctor']} />}>
                 <Route path="doctor-dashboard" element={<DoctorDashboard />} />
+                <Route path="doctor-history" element={<DoctorHistoryPage />} />
                 <Route path="consultation/:appointmentId" element={<ConsultationView />} />
                 <Route path="consultation-history/:recordId" element={<ConsultationHistoryView />} />
               </Route>
               
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'doctor']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'pharmacy', 'staff']} />}>
                 <Route path="pharmacy" element={<PharmacyDashboard />} />
                 <Route path="pharmacy/issue" element={<IssueMedicine />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'doctor']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'lab']} />}>
                 <Route path="lab" element={<LaboratoryDashboard />} />
               </Route>
               

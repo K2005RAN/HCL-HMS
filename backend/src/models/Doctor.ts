@@ -19,14 +19,14 @@ const DoctorSchema: Schema = new Schema({
     doctorId: { type: String, unique: true },
     name: { type: String, required: true },
     specialization: { type: String, required: true },
-    department: { type: String, required: true },
+    department: { type: String, default: 'General' },
     phone: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     availableDays: [{ type: String }],
-    availableTimeStart: { type: String },
-    availableTimeEnd: { type: String },
-    roomNumber: { type: String },
+    availableTimeStart: { type: String, default: '09:00' },
+    availableTimeEnd: { type: String, default: '17:00' },
+    roomNumber: { type: String, default: '101' },
     isActive: { type: Boolean, default: true },
 }, {
     timestamps: true

@@ -10,18 +10,20 @@ export interface ILabTest extends Document {
     resultsCompletedAt?: Date;
     resultNotes?: string;
     pdfReportUrl?: string;
+    remarks?: string;
 }
 
 const LabTestSchema: Schema = new Schema({
     patientId: { type: Schema.Types.ObjectId, ref: 'Patient', required: true },
-    doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor', required: true },
+    doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor' },
     testName: { type: String, required: true },
     category: { type: String, required: true },
     status: { type: String, default: 'Pending' },
     sampleCollectedAt: { type: Date },
     resultsCompletedAt: { type: Date },
     resultNotes: { type: String },
-    pdfReportUrl: { type: String }
+    pdfReportUrl: { type: String },
+    remarks: { type: String }
 }, {
     timestamps: true
 });

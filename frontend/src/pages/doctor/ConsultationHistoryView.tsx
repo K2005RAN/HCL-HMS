@@ -2,9 +2,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, FileText } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { openPdfReport } from '@/lib/utils';
 
 export default function ConsultationHistoryView() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function ConsultationHistoryView() {
   const { token, user } = useAuth();
   
   const [record, setRecord] = useState<any>(null);
+  const [labTests, setLabTests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,6 +27,18 @@ export default function ConsultationHistoryView() {
           headers: { Authorization: `Bearer ${token}` }
         });
         setRecord(res.data);
+
+        const patientIdVal = res.data?.patientId?._id || res.data?.patientId;
+        if (patientIdVal) {
+          try {
+            const labRes = await axios.get(`http://localhost:5000/api/lab/patient/${patientIdVal}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            setLabTests(labRes.data);
+          } catch (e) {
+            console.error("Failed to fetch patient lab tests", e);
+          }
+        }
       } catch (err) {
         console.error("Failed to fetch record", err);
       } finally {
@@ -137,7 +151,20 @@ export default function ConsultationHistoryView() {
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Prescription</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Prescription</h4>
+                  {record.prescription?.length > 0 && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      record.pharmacyStatus === 'Dispensed' 
+                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                        : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                    }`}>
+                      {record.pharmacyStatus === 'Dispensed' 
+                        ? `Pharmacy: Dispensed & Billed (₹${record.pharmacyBilledAmount || 0})`
+                        : 'Pharmacy: Pending Dispensing'}
+                    </span>
+                  )}
+                </div>
                 <div className="border border-border/50 rounded-lg overflow-hidden">
                   {record.prescription?.length > 0 ? (
                     <table className="w-full text-sm text-left">
@@ -161,6 +188,59 @@ export default function ConsultationHistoryView() {
                   ) : (
                     <div className="p-8 text-center text-sm text-muted-foreground bg-slate-50/50">
                       No medicines were prescribed.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Lab Test Reports & Findings</h4>
+                <div className="border border-border/50 rounded-lg overflow-hidden">
+                  {labTests.length > 0 ? (
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-muted text-muted-foreground border-b border-border/50">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Test Name</th>
+                          <th className="px-4 py-3 font-medium">Category</th>
+                          <th className="px-4 py-3 font-medium">Status</th>
+                          <th className="px-4 py-3 font-medium">Findings / Report Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {labTests.map((t: any) => (
+                          <tr key={t._id} className="bg-card">
+                            <td className="px-4 py-3 font-semibold">{t.testName}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{t.category}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                                t.status === 'Sample Collected' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
+                                'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                              }`}>
+                                {t.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">
+                              <div>{t.resultNotes || (t.status === 'Completed' ? 'Report ready' : 'Awaiting results from laboratory')}</div>
+                              {t.pdfReportUrl && (
+                                <div className="mt-1.5">
+                                  <button 
+                                    type="button"
+                                    onClick={() => openPdfReport(t.pdfReportUrl)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-xs font-semibold border border-primary/20 transition-all shadow-sm cursor-pointer"
+                                  >
+                                    <FileText className="h-3.5 w-3.5" /> View Uploaded PDF Report
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-8 text-center text-sm text-muted-foreground bg-slate-50/50">
+                      No lab test records for this patient.
                     </div>
                   )}
                 </div>

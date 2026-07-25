@@ -131,6 +131,8 @@ export default function LoginPage() {
                   >
                     <option value="admin">Administrator</option>
                     <option value="doctor">Doctor</option>
+                    <option value="pharmacy">Pharmacy</option>
+                    <option value="lab">Lab Incharge</option>
                     <option value="patient">Patient / Employee</option>
                     <option value="staff">Hospital Staff</option>
                   </select>
