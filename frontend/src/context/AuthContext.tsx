@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 interface User {
   id: string;
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Fetch fresh user profile details from backend
-      axios.get('http://localhost:5000/api/auth/me', {
+      axios.get(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${storedToken}` }
       })
       .then(res => {

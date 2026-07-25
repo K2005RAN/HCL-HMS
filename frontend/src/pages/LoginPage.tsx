@@ -8,6 +8,7 @@ import { Building2, Activity, AlertCircle, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setError('');
     
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', { email, password, role });
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password, role });
       login(response.data.token, response.data.user);
       navigate('/dashboard');
     } catch (err: any) {

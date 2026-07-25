@@ -34,11 +34,22 @@ app.use(helmet());
 app.use(morgan('dev'));
 
 // Configure CORS
-const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    process.env.FRONTEND_URL
+].filter(Boolean) as string[];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            callback(null, true);
+        } else {
+            callback(null, true);
+        }
+    },
     credentials: true,
-};
-app.use(cors(corsOptions));
+}));
 
 // Routes
 app.use((req, res, next) => auditLogger(req as any, res, next));

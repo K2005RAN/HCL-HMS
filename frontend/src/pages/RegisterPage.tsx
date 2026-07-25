@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Building2, AlertCircle, ArrowRight, UserPlus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export default function RegisterPage() {
     setError('');
     
     try {
-      await axios.post('http://localhost:5000/api/auth/register', { 
+      await axios.post(`${API_BASE_URL}/api/auth/register`, { 
         ...formData, 
         role: 'patient' 
       });

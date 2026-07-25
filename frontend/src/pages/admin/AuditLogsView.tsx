@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config/api';
 
 export default function AuditLogsView() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -32,7 +33,7 @@ export default function AuditLogsView() {
       if (endDate) params.endDate = endDate;
       if (searchQuery.trim()) params.search = searchQuery.trim();
 
-      const res = await axios.get('http://localhost:5000/api/audit-logs', {
+      const res = await axios.get(`${API_BASE_URL}/api/audit-logs`, {
         headers: { Authorization: `Bearer ${token}` },
         params
       });
