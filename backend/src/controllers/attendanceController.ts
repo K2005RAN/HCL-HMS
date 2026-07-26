@@ -15,7 +15,14 @@ const getTodayRange = () => {
     return { start, end };
 };
 
-// Auto-close any unclosed shifts from previous days (sets clockOut & updates status to Signed Off)
+// Helper to format Doctor Name cleanly without duplicate "Dr. Dr."
+const cleanDoctorName = (name: string) => {
+    if (!name) return 'Dr. User';
+    const stripped = name.replace(/^(Dr\.\s*)+/i, '').trim();
+    return `Dr. ${stripped}`;
+};
+
+// Auto-close any unclosed shifts from previous days & cleanup duplicate doctor staff entries
 const autoCloseUnsignedShifts = async () => {
     try {
         const { start } = getTodayRange();
@@ -31,6 +38,22 @@ const autoCloseUnsignedShifts = async () => {
             record.status = 'Signed Off';
             await record.save();
         }
+
+        // Clean up duplicate STF- entries for Doctors (if a DOC- entry exists for same doctor & date)
+        const doctorList = await Doctor.find();
+        for (const doc of doctorList) {
+            const docNameClean = doc.name.replace(/^(Dr\.\s*)+/i, '').trim();
+            const matchingStaff = await Staff.find({
+                name: new RegExp(docNameClean, 'i')
+            });
+            for (const s of matchingStaff) {
+                // Delete duplicate staff record from Staff collection so only Doctor record remains
+                await Staff.deleteOne({ _id: s._id });
+                const stfId = s.staffId || `STF-${s._id.toString().slice(-4)}`;
+                // Delete duplicate STF attendance logs
+                await Attendance.deleteMany({ staffId: stfId });
+            }
+        }
     } catch (err) {
         console.error('Error in autoCloseUnsignedShifts:', err);
     }
@@ -40,7 +63,6 @@ const autoCloseUnsignedShifts = async () => {
 // @desc    Get staff members with today's attendance status (Admins get all; Doctor/Lab/Pharmacy get ONLY their own record)
 export const searchStaff = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Auto-close unclosed shifts from previous days so today starts completely fresh
         await autoCloseUnsignedShifts();
 
         const queryStr = (req.query.query as string || '').trim();
@@ -68,9 +90,10 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             let results: any[] = [];
 
             if (dbUser) {
-                const sId = dbUser.doctorId || dbUser.staffId || dbUser.employeeId || `STF-${dbUser._id.toString().slice(-4)}`;
-                const nameStr = userRole === 'doctor' && !dbUser.name.startsWith('Dr.') ? `Dr. ${dbUser.name}` : dbUser.name;
-                const deptStr = dbUser.department || (userRole === 'doctor' ? 'Medical / OPD' : userRole.toUpperCase());
+                const isDoc = userRole === 'doctor' || !!dbUser.specialization || !!dbUser.doctorId;
+                const sId = dbUser.doctorId || dbUser.staffId || dbUser.employeeId || (isDoc ? `DOC-${dbUser._id.toString().slice(-4)}` : `STF-${dbUser._id.toString().slice(-4)}`);
+                const nameStr = isDoc ? cleanDoctorName(dbUser.name) : dbUser.name;
+                const deptStr = dbUser.department || (isDoc ? 'Medical / OPD' : userRole.toUpperCase());
                 
                 const todayLog = await Attendance.findOne({ staffId: sId, date: { $gte: start, $lte: end } });
 
@@ -80,7 +103,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                     name: nameStr,
                     email: dbUser.email,
                     department: deptStr,
-                    role: userRole === 'doctor' ? 'Doctor' : (dbUser.designation || userRole.toUpperCase()),
+                    role: isDoc ? 'Doctor' : (dbUser.designation || userRole.toUpperCase()),
                     phone: dbUser.phone || 'N/A',
                     todayStatus: todayLog ? todayLog.status : 'Not Marked',
                     clockIn: todayLog ? todayLog.clockIn : null,
@@ -88,16 +111,17 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 }];
             } else {
                 // Fallback entry if user record is transient
-                const sId = currentUser.doctorId || currentUser.staffId || currentUser.employeeId || `STF-${currentUserId.slice(-4)}`;
+                const isDoc = userRole === 'doctor';
+                const sId = currentUser.doctorId || currentUser.staffId || currentUser.employeeId || (isDoc ? `DOC-${currentUserId.slice(-4)}` : `STF-${currentUserId.slice(-4)}`);
                 const todayLog = await Attendance.findOne({ staffId: sId, date: { $gte: start, $lte: end } });
-                const nameStr = userRole === 'doctor' && !(currentUser.name || '').startsWith('Dr.') ? `Dr. ${currentUser.name || currentUser.username}` : (currentUser.name || currentUser.username || 'Staff User');
+                const nameStr = isDoc ? cleanDoctorName(currentUser.name || currentUser.username) : (currentUser.name || currentUser.username || 'Staff User');
 
                 results = [{
                     _id: currentUserId,
                     staffId: sId,
                     name: nameStr,
                     email: currentUser.email || 'N/A',
-                    department: userRole === 'doctor' ? 'Medical / OPD' : userRole.toUpperCase(),
+                    department: isDoc ? 'Medical / OPD' : userRole.toUpperCase(),
                     role: userRole.toUpperCase(),
                     phone: currentUser.phone || 'N/A',
                     todayStatus: todayLog ? todayLog.status : 'Not Marked',
@@ -153,9 +177,34 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             attendanceMap.set(log.staffId, log);
         });
 
+        // Set of Doctor names to deduplicate Staff entries
+        const doctorNamesSet = new Set(doctors.map(d => d.name.replace(/^(Dr\.\s*)+/i, '').toLowerCase()));
+
         let results: any[] = [];
 
+        // Add Doctors first
+        doctors.forEach(d => {
+            const dId = d.doctorId || `DOC-${d._id.toString().slice(-4)}`;
+            const todayLog = attendanceMap.get(dId);
+            results.push({
+                _id: d._id,
+                staffId: dId,
+                name: cleanDoctorName(d.name),
+                email: d.email,
+                department: d.department || 'Doctor',
+                role: 'Doctor',
+                phone: d.phone || 'N/A',
+                todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                clockIn: todayLog ? todayLog.clockIn : null,
+                clockOut: todayLog ? todayLog.clockOut : null
+            });
+        });
+
+        // Add Staff members (excluding those who are already Doctors)
         staffMembers.forEach(s => {
+            const cleanName = s.name.replace(/^(Dr\.\s*)+/i, '').toLowerCase();
+            if (doctorNamesSet.has(cleanName)) return; // Skip duplicate staff entry for Doctors
+
             const sId = s.staffId || `STF-${s._id.toString().slice(-4)}`;
             const todayLog = attendanceMap.get(sId);
             results.push({
@@ -183,23 +232,6 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 department: e.department || 'General',
                 role: e.designation || 'Employee',
                 phone: e.phone || 'N/A',
-                todayStatus: todayLog ? todayLog.status : 'Not Marked',
-                clockIn: todayLog ? todayLog.clockIn : null,
-                clockOut: todayLog ? todayLog.clockOut : null
-            });
-        });
-
-        doctors.forEach(d => {
-            const dId = d.doctorId || `DOC-${d._id.toString().slice(-4)}`;
-            const todayLog = attendanceMap.get(dId);
-            results.push({
-                _id: d._id,
-                staffId: dId,
-                name: d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`,
-                email: d.email,
-                department: d.department || 'Doctor',
-                role: 'Doctor',
-                phone: d.phone || 'N/A',
                 todayStatus: todayLog ? todayLog.status : 'Not Marked',
                 clockIn: todayLog ? todayLog.clockIn : null,
                 clockOut: todayLog ? todayLog.clockOut : null
@@ -240,10 +272,14 @@ export const giveAttendance = async (req: Request, res: Response): Promise<void>
             return;
         }
 
+        const cleanName = staffName.startsWith('Dr.') || staffId.startsWith('DOC-') 
+            ? cleanDoctorName(staffName) 
+            : staffName;
+
         const now = new Date();
         const newRecord = new Attendance({
             staffId,
-            staffName,
+            staffName: cleanName,
             department: department || 'General',
             date: start,
             clockIn: now,
@@ -302,6 +338,8 @@ export const signOff = async (req: Request, res: Response): Promise<void> => {
 // @desc    Get attendance logs (Admins get all; Doctor/Lab/Pharmacy get ONLY their own history)
 export const getAdminAttendanceLogs = async (req: Request, res: Response): Promise<void> => {
     try {
+        await autoCloseUnsignedShifts();
+
         const monthStr = req.query.month as string;       // e.g. '2026-07'
         const dateStr = req.query.date as string;         // e.g. '2026-07-26'
         const staffIdFilter = req.query.staffId as string; // e.g. 'STF-0001'
@@ -317,7 +355,7 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
         if (!isAdmin && currentUser) {
             const currentUserId = (currentUser.id || currentUser._id || '').toString();
             const currentEmail = (currentUser.email || '').toLowerCase();
-            const currentName = (currentUser.name || currentUser.username || '').replace(/^Dr\.\s*/i, '').trim();
+            const currentName = (currentUser.name || currentUser.username || '').replace(/^(Dr\.\s*)+/i, '').trim();
 
             let foundStaff: any = null;
             if (userRole === 'doctor') {
@@ -340,7 +378,7 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
                 candidateIds.push(`DOC-${currentUserId.slice(-4)}`);
             }
 
-            const nameParts = (foundStaff?.name || currentName || '').replace(/^Dr\.\s*/i, '').trim();
+            const nameParts = (foundStaff?.name || currentName || '').replace(/^(Dr\.\s*)+/i, '').trim();
             
             query.$or = [
                 { staffId: { $in: candidateIds } }
@@ -394,13 +432,29 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
         const totalRecords = records.length;
         const presentCount = records.filter(r => r.status === 'Present').length;
         const signedOffCount = records.filter(r => r.status === 'Signed Off').length;
-        const markedDaysCount = presentCount + signedOffCount;
+        
+        // UNIQUE CALENDAR DAYS where attendance was marked in this month/period
+        const uniqueDatesSet = new Set(
+            records.map(r => new Date(r.date).toISOString().slice(0, 10))
+        );
+        const markedDaysCount = uniqueDatesSet.size;
 
-        // Calculate days in month / period
+        // Calculate total days in month / period
         let daysInPeriod = 30;
         if (monthStr && monthStr !== 'all') {
-            const [y, m] = monthStr.split('-').map(Number);
-            daysInPeriod = new Date(y, m, 0).getDate();
+            let y: number | undefined, m: number | undefined;
+            if (monthStr.includes('-')) {
+                [y, m] = monthStr.split('-').map(Number);
+            } else {
+                const dObj = new Date(monthStr);
+                if (!isNaN(dObj.getTime())) {
+                    y = dObj.getFullYear();
+                    m = dObj.getMonth() + 1;
+                }
+            }
+            if (y && m) {
+                daysInPeriod = new Date(y, m, 0).getDate();
+            }
         } else {
             daysInPeriod = new Date().getDate(); // Days passed so far this month
         }
@@ -447,7 +501,6 @@ export const addStaffManual = async (req: Request, res: Response): Promise<void>
 
         const staffEmail = email || `${name.toLowerCase().replace(/\s+/g, '')}${Date.now().toString().slice(-4)}@hospital.com`;
         
-        // Generate unique staff ID
         let count = await Staff.countDocuments() + 1;
         let candidateId = `STF-${count.toString().padStart(4, '0')}`;
         while (await Staff.findOne({ staffId: candidateId })) {
@@ -549,7 +602,6 @@ export const deleteStaff = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
-        // Verify Admin Password
         const models = [Admin, Staff, Doctor];
         let foundAdmin: any = null;
         for (const Model of models) {
@@ -568,7 +620,6 @@ export const deleteStaff = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
-        // Delete staff from Staff, Employee, or Doctor collections
         let deleted = false;
         const sRes = await Staff.deleteOne({ $or: [{ staffId }, { _id: staffId }] });
         if (sRes.deletedCount > 0) deleted = true;
@@ -588,7 +639,6 @@ export const deleteStaff = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
-        // Clean up associated attendance records
         await Attendance.deleteMany({ staffId });
 
         res.json({ message: `Staff member ${staffId} deleted successfully` });
