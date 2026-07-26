@@ -5,9 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, CheckCircle, XCircle, Search, Calendar, UserPlus, Upload, LogOut, UserCheck, AlertCircle, Building, Phone, ShieldCheck } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Clock, CheckCircle, XCircle, Search, Calendar, UserPlus, LogOut, UserCheck, AlertCircle, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
@@ -17,11 +16,10 @@ export default function AttendanceDashboard() {
   const { user, token } = useAuth();
   const isAdmin = ['admin', 'super admin', 'hr'].includes((user?.role || '').toLowerCase());
 
-  // Staff Search & Attendance State
+  // Staff Directory & Attendance State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [attendanceMsg, setAttendanceMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -47,6 +45,22 @@ export default function AttendanceDashboard() {
   const [addingStaff, setAddingStaff] = useState(false);
   const [addStaffMsg, setAddStaffMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Fetch all staff members (with optional search query)
+  const fetchStaffMembers = async () => {
+    if (!token) return;
+    setSearching(true);
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/attendance/search-staff?query=${searchQuery}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSearchResults(res.data || []);
+    } catch (err) {
+      console.error('Fetch staff error:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
   // Fetch admin logs
   const fetchAdminLogs = async () => {
     if (!token) return;
@@ -65,35 +79,12 @@ export default function AttendanceDashboard() {
   };
 
   useEffect(() => {
+    fetchStaffMembers();
+  }, [token, searchQuery]);
+
+  useEffect(() => {
     fetchAdminLogs();
   }, [token, logFilterDate, logSearchQuery]);
-
-  // Live Staff Search Effect
-  useEffect(() => {
-    const performSearch = async () => {
-      if (searchQuery.length >= 2) {
-        setSearching(true);
-        try {
-          const res = await axios.get(`${API_BASE_URL}/api/attendance/search-staff?query=${searchQuery}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setSearchResults(res.data);
-        } catch (err) {
-          console.error('Search staff error:', err);
-          setSearchResults([]);
-        } finally {
-          setSearching(false);
-        }
-      } else {
-        setSearchResults([]);
-      }
-    };
-
-    const timeoutId = setTimeout(() => {
-      performSearch();
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, token]);
 
   // Give Attendance (Clock In)
   const handleGiveAttendance = async (staffMember: any) => {
@@ -109,6 +100,7 @@ export default function AttendanceDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAttendanceMsg({ type: 'success', text: `Attendance marked as PRESENT for ${staffMember.name} (${staffMember.staffId})` });
+      fetchStaffMembers();
       fetchAdminLogs();
     } catch (err: any) {
       console.error('Give attendance error:', err);
@@ -129,6 +121,7 @@ export default function AttendanceDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAttendanceMsg({ type: 'success', text: `Signed off successfully for ${staffMember.name} (${staffMember.staffId})!` });
+      fetchStaffMembers();
       fetchAdminLogs();
     } catch (err: any) {
       console.error('Sign off error:', err);
@@ -151,6 +144,7 @@ export default function AttendanceDashboard() {
       setManualForm({
         name: '', email: '', phone: '', department: 'Emergency', shift: 'Morning', designation: 'Staff Nurse', password: ''
       });
+      fetchStaffMembers();
       fetchAdminLogs();
     } catch (err: any) {
       console.error('Add staff failed:', err);
@@ -187,7 +181,7 @@ export default function AttendanceDashboard() {
 
         {isAdmin && (
           <motion.div variants={itemVariants} className="flex gap-2">
-            <Button
+            <Button 
               onClick={() => setShowAddStaffModal(true)}
               className="shadow-lg shadow-primary/20 hover:scale-105 transition-transform bg-gradient-to-r from-primary to-indigo-600 font-bold gap-2"
             >
@@ -198,94 +192,119 @@ export default function AttendanceDashboard() {
         )}
       </div>
 
-      {/* Staff Attendance Marking Section */}
+      {/* Staff Attendance Portal – Shows All Registered Hospital Staff */}
       <motion.div variants={itemVariants}>
         <Card className="glass border-border/50 shadow-xl overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b pb-4">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-primary" />
-              Staff Self Attendance Portal
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Search by Staff ID (e.g. STF-0001, EMP-0001) or Name to Give Attendance or Sign Off your shift.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            {/* Search Bar */}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-foreground">Find Staff by Staff ID, Name, or Phone</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-primary" />
+                  Hospital Staff Attendance Portal
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  All registered hospital staff members are listed below. Click "Give Attendance" to clock in or "Sign Off" to complete shift.
+                </CardDescription>
+              </div>
+
+              {/* Search Filter Bar */}
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Type Staff ID (e.g. STF-0001, EMP-0001), Doctor ID, or Name..."
-                  className="pl-9 h-11 bg-background/80 border-border/60 rounded-xl text-sm shadow-sm"
+                  placeholder="Filter staff by ID, Name, Phone..."
+                  className="pl-8 h-9 bg-background/80 border-border/60 text-xs shadow-sm"
                 />
               </div>
             </div>
-
-            {/* Attendance Status Alert Message */}
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Attendance Alert Notification */}
             {attendanceMsg && (
-              <div className={`p-4 rounded-xl text-xs font-semibold flex items-center gap-2 ${attendanceMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'}`}>
-                {attendanceMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                {attendanceMsg.text}
+              <div className="p-4 border-b">
+                <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${attendanceMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'}`}>
+                  {attendanceMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                  {attendanceMsg.text}
+                </div>
               </div>
             )}
 
-            {/* Search Results List */}
-            {searching ? (
-              <div className="text-xs text-muted-foreground text-center py-4">Searching staff directory...</div>
-            ) : searchResults.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {searchResults.map((staff) => (
-                  <Card key={staff.staffId} className="border-border/60 bg-card hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">
-                          {staff.staffId}
-                        </span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {staff.department}
+            {/* Staff Directory Table */}
+            <Table>
+              <TableHeader className="bg-muted/30">
+                <TableRow className="border-border/50 hover:bg-transparent">
+                  <TableHead className="text-foreground font-semibold py-3 text-xs">Staff ID</TableHead>
+                  <TableHead className="text-foreground font-semibold py-3 text-xs">Staff Name</TableHead>
+                  <TableHead className="text-foreground font-semibold py-3 text-xs">Department & Role</TableHead>
+                  <TableHead className="text-foreground font-semibold py-3 text-xs">Contact Phone</TableHead>
+                  <TableHead className="text-foreground font-semibold py-3 text-xs">Today's Status</TableHead>
+                  <TableHead className="text-foreground font-semibold py-3 text-xs text-right">Attendance Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {searching ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center text-xs text-muted-foreground">
+                      Loading hospital staff directory...
+                    </TableCell>
+                  </TableRow>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((staff) => (
+                    <TableRow key={staff.staffId} className="border-border/50 hover:bg-muted/40 transition-colors text-xs">
+                      <TableCell className="font-mono font-bold text-primary py-3">{staff.staffId}</TableCell>
+                      <TableCell className="font-bold text-foreground py-3">{staff.name}</TableCell>
+                      <TableCell className="text-muted-foreground py-3">
+                        <span className="font-semibold text-foreground">{staff.department}</span>
+                        <span className="text-[11px] block text-muted-foreground">{staff.role}</span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground py-3">{staff.phone}</TableCell>
+                      <TableCell className="py-3">
+                        <Badge variant="outline" className={
+                          staff.todayStatus === 'Present' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold' :
+                          staff.todayStatus === 'Signed Off' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-bold' :
+                          'bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold'
+                        }>
+                          {staff.todayStatus === 'Present' ? `Present (${formatTime(staff.clockIn)})` :
+                           staff.todayStatus === 'Signed Off' ? `Signed Off (${formatTime(staff.clockOut)})` :
+                           'Not Marked Yet'}
                         </Badge>
-                      </div>
+                      </TableCell>
+                      <TableCell className="py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            disabled={actionLoading || staff.todayStatus === 'Present' || staff.todayStatus === 'Signed Off'}
+                            onClick={() => handleGiveAttendance(staff)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 gap-1"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            {staff.todayStatus === 'Present' ? 'Present' : staff.todayStatus === 'Signed Off' ? 'Completed' : 'Give Attendance'}
+                          </Button>
 
-                      <div>
-                        <h4 className="font-bold text-sm text-foreground">{staff.name}</h4>
-                        <p className="text-xs text-muted-foreground">{staff.role} • {staff.phone}</p>
-                      </div>
-
-                      <div className="flex gap-2 pt-2 border-t border-border/40">
-                        <Button
-                          size="sm"
-                          disabled={actionLoading}
-                          onClick={() => handleGiveAttendance(staff)}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 gap-1.5"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Give Attendance
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={actionLoading}
-                          onClick={() => handleSignOff(staff)}
-                          className="flex-1 border-rose-200 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 font-bold text-xs h-9 gap-1.5"
-                        >
-                          <LogOut className="w-3.5 h-3.5" />
-                          Sign Off
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : searchQuery.length >= 2 ? (
-              <div className="p-6 text-center text-xs text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
-                No staff found matching "{searchQuery}". Make sure the Staff ID or Name is entered correctly.
-              </div>
-            ) : null}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={actionLoading || staff.todayStatus !== 'Present'}
+                            onClick={() => handleSignOff(staff)}
+                            className="border-rose-200 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 font-bold text-xs h-8 px-3 gap-1"
+                          >
+                            <LogOut className="w-3.5 h-3.5" />
+                            Sign Off
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center text-xs text-muted-foreground">
+                      No hospital staff found matching "{searchQuery}". Click "Add Hospital Staff" to add new staff.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </motion.div>
@@ -411,7 +430,7 @@ export default function AttendanceDashboard() {
                     </TableRow>
                   ) : logs.length > 0 ? (
                     logs.map((record, i) => (
-                      <motion.tr
+                      <motion.tr 
                         key={record._id}
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -433,8 +452,8 @@ export default function AttendanceDashboard() {
                         <TableCell className="py-3">
                           <Badge variant="outline" className={
                             record.status === 'Present' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold' :
-                              record.status === 'Signed Off' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-bold' :
-                                'bg-rose-500/10 text-rose-600 border-rose-500/20 font-bold'
+                            record.status === 'Signed Off' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-bold' :
+                            'bg-rose-500/10 text-rose-600 border-rose-500/20 font-bold'
                           }>
                             {record.status}
                           </Badge>
@@ -575,6 +594,7 @@ export default function AttendanceDashboard() {
             ) : (
               <StaffCSVImportWizard onComplete={() => {
                 setShowAddStaffModal(false);
+                fetchStaffMembers();
                 fetchAdminLogs();
               }} />
             )}

@@ -15,77 +15,103 @@ const getTodayRange = () => {
 };
 
 // @route   GET /api/attendance/search-staff
-// @desc    Search staff by staffId, name, or phone for attendance giving
+// @desc    Get all staff members (or search by query) with today's attendance status
 export const searchStaff = async (req: Request, res: Response): Promise<void> => {
     try {
         const queryStr = (req.query.query as string || '').trim();
-        if (!queryStr || queryStr.length < 2) {
-            res.status(400).json({ message: 'Query string must be at least 2 characters' });
-            return;
+
+        let staffMembers: any[] = [];
+        let employees: any[] = [];
+        let doctors: any[] = [];
+
+        if (queryStr) {
+            const regex = new RegExp(queryStr, 'i');
+            staffMembers = await Staff.find({
+                $or: [
+                    { staffId: regex },
+                    { name: regex },
+                    { phone: regex },
+                    { email: regex }
+                ]
+            }).select('-passwordHash');
+
+            employees = await Employee.find({
+                $or: [
+                    { employeeId: regex },
+                    { name: regex },
+                    { phone: regex }
+                ]
+            });
+
+            doctors = await Doctor.find({
+                $or: [
+                    { doctorId: regex },
+                    { name: regex },
+                    { phone: regex }
+                ]
+            }).select('-passwordHash');
+        } else {
+            // Return ALL staff members when query is empty
+            staffMembers = await Staff.find().select('-passwordHash').sort({ createdAt: -1 });
+            employees = await Employee.find().sort({ createdAt: -1 });
+            doctors = await Doctor.find().select('-passwordHash').sort({ createdAt: -1 });
         }
 
-        const regex = new RegExp(queryStr, 'i');
-
-        // Search Staff collection
-        const staffMembers = await Staff.find({
-            $or: [
-                { staffId: regex },
-                { name: regex },
-                { phone: regex },
-                { email: regex }
-            ]
-        }).select('-passwordHash');
-
-        // Search Employee collection
-        const employees = await Employee.find({
-            $or: [
-                { employeeId: regex },
-                { name: regex },
-                { phone: regex }
-            ]
+        // Fetch today's attendance records to attach live status
+        const { start, end } = getTodayRange();
+        const todayAttendanceLogs = await Attendance.find({ date: { $gte: start, $lte: end } });
+        const attendanceMap = new Map<string, any>();
+        todayAttendanceLogs.forEach(log => {
+            attendanceMap.set(log.staffId, log);
         });
-
-        // Search Doctor collection
-        const doctors = await Doctor.find({
-            $or: [
-                { doctorId: regex },
-                { name: regex },
-                { phone: regex }
-            ]
-        }).select('-passwordHash');
 
         const results: any[] = [];
 
         staffMembers.forEach(s => {
+            const sId = s.staffId || `STF-${s._id.toString().slice(-4)}`;
+            const todayLog = attendanceMap.get(sId);
             results.push({
                 _id: s._id,
-                staffId: s.staffId || `STF-${s._id.toString().slice(-4)}`,
+                staffId: sId,
                 name: s.name,
                 department: s.department || 'Staff',
                 role: 'Staff',
-                phone: (s as any).phone || 'N/A'
+                phone: (s as any).phone || 'N/A',
+                todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                clockIn: todayLog ? todayLog.clockIn : null,
+                clockOut: todayLog ? todayLog.clockOut : null
             });
         });
 
         employees.forEach(e => {
+            const eId = e.employeeId || `EMP-${e._id.toString().slice(-4)}`;
+            const todayLog = attendanceMap.get(eId);
             results.push({
                 _id: e._id,
-                staffId: e.employeeId || `EMP-${e._id.toString().slice(-4)}`,
+                staffId: eId,
                 name: e.name,
                 department: e.department || 'General',
                 role: e.designation || 'Employee',
-                phone: e.phone || 'N/A'
+                phone: e.phone || 'N/A',
+                todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                clockIn: todayLog ? todayLog.clockIn : null,
+                clockOut: todayLog ? todayLog.clockOut : null
             });
         });
 
         doctors.forEach(d => {
+            const dId = d.doctorId || `DOC-${d._id.toString().slice(-4)}`;
+            const todayLog = attendanceMap.get(dId);
             results.push({
                 _id: d._id,
-                staffId: d.doctorId || `DOC-${d._id.toString().slice(-4)}`,
+                staffId: dId,
                 name: `Dr. ${d.name}`,
                 department: d.department || 'Doctor',
                 role: 'Doctor',
-                phone: d.phone || 'N/A'
+                phone: d.phone || 'N/A',
+                todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                clockIn: todayLog ? todayLog.clockIn : null,
+                clockOut: todayLog ? todayLog.clockOut : null
             });
         });
 
