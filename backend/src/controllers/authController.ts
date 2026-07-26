@@ -151,16 +151,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 export const adminCreateUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { email, password, role, name, department, ...otherData } = req.body;
+        const roleLower = role.toLowerCase();
+        const userEmail = (email && email.trim() !== '')
+            ? email.trim()
+            : `${roleLower}_${otherData.phone ? otherData.phone.replace(/\D/g, '') : Date.now()}@hospital.com`;
 
-        const Model = getModelByRole(role);
-        if (!Model) {
-            res.status(400).json({ message: 'Invalid role' });
-            return;
-        }
-
-        const existingUser = await Model.findOne({ email });
-        if (existingUser) {
+        const existingUser = await Model.findOne({ email: userEmail });
+        if (existingUser && email && email.trim() !== '') {
             res.status(400).json({ message: 'User with this email already exists' });
             return;
         }
@@ -220,7 +217,7 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
         }
 
         const newUser = new Model({
-            email,
+            email: userEmail,
             passwordHash,
             name,
             ...customIdField,

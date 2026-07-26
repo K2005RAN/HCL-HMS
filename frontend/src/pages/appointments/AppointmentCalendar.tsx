@@ -321,8 +321,8 @@ export default function AppointmentCalendar() {
                           <Input className="h-9 text-sm" value={newPatientData.name} onChange={e => setNewPatientData({...newPatientData, name: e.target.value})} placeholder="e.g. John Doe" />
                         </div>
                         <div className="space-y-1 col-span-2 sm:col-span-1">
-                          <Label className="text-xs text-foreground">Email</Label>
-                          <Input type="email" className="h-9 text-sm border-input/60" value={newPatientData.email} onChange={e => setNewPatientData({...newPatientData, email: e.target.value})} placeholder="Required for portal access" required />
+                          <Label className="text-xs text-foreground">Email Address (Optional)</Label>
+                          <Input type="email" className="h-9 text-sm border-input/60" value={newPatientData.email} onChange={e => setNewPatientData({...newPatientData, email: e.target.value})} placeholder="Optional email" />
                         </div>
                         <div className="space-y-1 col-span-1">
                           <Label className="text-xs text-foreground">Gender</Label>
@@ -352,7 +352,7 @@ export default function AppointmentCalendar() {
                         </div>
                         <div className="space-y-1 col-span-1">
                           <Label className="text-xs text-foreground">Emergency Contact</Label>
-                          <Input type="tel" required className="h-9 text-sm border-input/60" value={newPatientData.emergencyContact} onChange={e => setNewPatientData({...newPatientData, emergencyContact: e.target.value})} placeholder="10-digit number" />
+                          <Input type="tel" className="h-9 text-sm border-input/60" value={newPatientData.emergencyContact} onChange={e => setNewPatientData({...newPatientData, emergencyContact: e.target.value})} placeholder="10-digit number" />
                         </div>
                         <div className="space-y-1 col-span-2">
                           <Label className="text-xs text-foreground">Past Issues / Chronic Diseases</Label>
@@ -364,14 +364,14 @@ export default function AppointmentCalendar() {
                         </div>
                         <div className="space-y-1 col-span-2">
                           <Label className="text-xs text-foreground">Address</Label>
-                          <Input required className="h-9 text-sm border-input/60" value={newPatientData.address} onChange={e => setNewPatientData({...newPatientData, address: e.target.value})} placeholder="City, State" />
+                          <Input className="h-9 text-sm border-input/60" value={newPatientData.address} onChange={e => setNewPatientData({...newPatientData, address: e.target.value})} placeholder="City, State" />
                         </div>
                         <div className="col-span-2 mt-2">
                           <Button 
                             type="button" 
                             onClick={handleQuickRegister} 
-                            disabled={registering || !newPatientData.name || !newPatientData.email || !newPatientData.age}
-                            className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            disabled={registering || !newPatientData.name || !newPatientData.age}
+                            className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                           >
                             {registering ? 'Registering...' : 'Register & Select Patient'}
                           </Button>
