@@ -64,15 +64,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
         );
 
-        // Record successful login
-        await AuditLog.create({
+        // Record successful login in background (non-blocking for faster login response)
+        AuditLog.create({
             userId: user._id,
             userName: (user as any).name,
             userRole: role.toLowerCase(),
             action: 'Login',
             details: `Successful login as ${role}`,
             ipAddress: req.ip || req.connection?.remoteAddress || 'Unknown'
-        });
+        }).catch(err => console.error('Audit Log login recording error:', err));
 
         const userObj = user.toObject();
         delete userObj.passwordHash;
