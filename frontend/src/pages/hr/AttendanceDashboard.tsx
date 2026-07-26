@@ -14,7 +14,10 @@ import StaffCSVImportWizard from '@/components/attendance/StaffCSVImportWizard';
 
 export default function AttendanceDashboard() {
   const { user, token } = useAuth();
-  const isAdmin = ['admin', 'super admin', 'hr'].includes((user?.role || '').toLowerCase());
+  const userRole = (user?.role || '').toLowerCase();
+  const isAdmin = ['admin', 'super admin', 'hr'].includes(userRole);
+  const isSelfOnly = ['doctor', 'pharmacy', 'lab'].includes(userRole);
+  const canAccessAllStaff = isAdmin || userRole === 'staff';
 
   // Staff Directory & Attendance State
   const [searchQuery, setSearchQuery] = useState('');
@@ -235,10 +238,10 @@ export default function AttendanceDashboard() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <motion.div variants={itemVariants}>
           <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-            {isAdmin ? 'Hospital Staff & Attendance Management' : 'My Personal Attendance & Shift Portal'}
+            {canAccessAllStaff ? 'Hospital Staff & Attendance Management' : 'My Personal Attendance & Shift Portal'}
           </h2>
           <p className="text-muted-foreground mt-1 text-lg">
-            {isAdmin 
+            {canAccessAllStaff 
               ? 'Give daily attendance, sign off shifts, and track detailed monthly hospital attendance reports.' 
               : `Clock in for your shift, sign off at shift completion, and review your monthly attendance record.`}
           </p>
@@ -265,17 +268,17 @@ export default function AttendanceDashboard() {
               <div>
                 <CardTitle className="text-xl flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-primary" />
-                  {isAdmin ? 'Hospital Staff Attendance Portal' : 'My Shift Clock In & Sign Off'}
+                  {canAccessAllStaff ? 'Hospital Staff Attendance Portal' : 'My Shift Clock In & Sign Off'}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  {isAdmin 
+                  {canAccessAllStaff 
                     ? 'All registered hospital staff members are listed below. Click "Give Attendance" to clock in or "Sign Off" to complete shift.'
                     : 'Your personal attendance card. Click "Give Attendance" to clock in or "Sign Off" when your shift ends.'}
                 </CardDescription>
               </div>
 
-              {/* Search Filter Bar (Admin Only) */}
-              {isAdmin && (
+              {/* Search Filter Bar (Admin & Staff) */}
+              {canAccessAllStaff && (
                 <div className="relative w-full sm:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
@@ -299,8 +302,8 @@ export default function AttendanceDashboard() {
               </div>
             )}
 
-            {/* Non-Admin Personal Profile Card */}
-            {!isAdmin ? (
+            {/* Self-Only Roles (Doctor, Pharmacy, Lab) Personal Profile Card */}
+            {isSelfOnly ? (
               <div className="p-6">
                 {mySelfStaff ? (
                   <Card className="border-primary/30 bg-primary/5 shadow-md">
@@ -533,10 +536,10 @@ export default function AttendanceDashboard() {
               <div>
                 <CardTitle className="text-xl flex items-center gap-2">
                   <CalendarRange className="w-5 h-5 text-primary" />
-                  {isAdmin ? 'Staff Monthly & Daily Attendance History' : 'My Personal Attendance History Logs'}
+                  {canAccessAllStaff ? 'Staff Monthly & Daily Attendance History' : 'My Personal Attendance History Logs'}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  {isAdmin
+                  {canAccessAllStaff
                     ? 'Select a staff member and month to view their complete attendance breakdown and log history.'
                     : 'Select a month to view your detailed shift check-in and sign-off records.'}
                 </CardDescription>
@@ -551,7 +554,7 @@ export default function AttendanceDashboard() {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="h-9 w-40 text-xs bg-background/50 font-semibold"
                 />
-                {isAdmin && (
+                {canAccessAllStaff && (
                   <Button size="sm" variant="outline" onClick={handleResetFilters} className="gap-1 text-xs font-bold">
                     <RefreshCw className="w-3.5 h-3.5" />
                     Reset
@@ -560,8 +563,8 @@ export default function AttendanceDashboard() {
               </div>
             </div>
 
-            {/* Admin Extra Filter Controls */}
-            {isAdmin && (
+            {/* Extra Filter Controls (Admin & Staff) */}
+            {canAccessAllStaff && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-border/40">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-bold text-muted-foreground">Select Staff Member</Label>

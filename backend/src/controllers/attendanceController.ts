@@ -67,13 +67,12 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
 
         const queryStr = (req.query.query as string || '').trim();
         const currentUser = (req as any).user;
-        const userRole = (currentUser?.role || '').toLowerCase();
-        const isAdmin = ['admin', 'super admin', 'hr'].includes(userRole);
+        const isSelfOnlyRole = ['doctor', 'pharmacy', 'lab'].includes(userRole);
 
         const { start, end } = getTodayRange();
 
-        // Non-Admin (Doctor, Pharmacy, Lab, Staff): Fetch ONLY their own profile directly from DB
-        if (!isAdmin && currentUser) {
+        // Self-Only Roles (Doctor, Pharmacy, Lab): Fetch ONLY their own profile directly from DB
+        if (isSelfOnlyRole && currentUser) {
             const currentUserId = (currentUser.id || currentUser._id || '').toString();
             const currentEmail = (currentUser.email || '').toLowerCase();
 
@@ -346,13 +345,12 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
         const search = (req.query.search as string || '').trim();
 
         const currentUser = (req as any).user;
-        const userRole = (currentUser?.role || '').toLowerCase();
-        const isAdmin = ['admin', 'super admin', 'hr'].includes(userRole);
+        const isSelfOnlyRole = ['doctor', 'pharmacy', 'lab'].includes(userRole);
 
         const query: any = {};
 
-        // Non-Admins ONLY get their own attendance history records!
-        if (!isAdmin && currentUser) {
+        // Self-Only Roles (Doctor, Pharmacy, Lab): ONLY get their own attendance history records!
+        if (isSelfOnlyRole && currentUser) {
             const currentUserId = (currentUser.id || currentUser._id || '').toString();
             const currentEmail = (currentUser.email || '').toLowerCase();
             const currentName = (currentUser.name || currentUser.username || '').replace(/^(Dr\.\s*)+/i, '').trim();
