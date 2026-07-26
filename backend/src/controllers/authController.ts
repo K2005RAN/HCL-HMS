@@ -156,6 +156,8 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
         if (roleLower === 'doctor') { prefix = 'DOC'; idKey = 'doctorId'; }
         else if (roleLower === 'patient') { prefix = 'PAT'; idKey = 'patientId'; }
         else if (roleLower === 'staff') { prefix = 'STF'; idKey = 'staffId'; }
+        else if (roleLower === 'lab') { prefix = 'LAB'; idKey = 'labId'; }
+        else if (roleLower === 'pharmacy') { prefix = 'PHM'; idKey = 'pharmacyId'; }
         else if (roleLower === 'admin') { prefix = 'ADM'; idKey = 'adminId'; }
         else if (roleLower === 'employee') { prefix = 'EMP'; idKey = 'employeeId'; }
 
@@ -176,12 +178,19 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
 
         if (roleLower === 'doctor') {
             roleSpecificData.specialization = otherData.specialization || 'General Physician';
-            roleSpecificData.department = department || 'General';
+            roleSpecificData.department = department || 'OPD';
             roleSpecificData.availableDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
             roleSpecificData.availableTimeStart = '09:00';
             roleSpecificData.availableTimeEnd = '17:00';
         } else if (roleLower === 'staff') {
-            roleSpecificData.department = department || 'General';
+            roleSpecificData.department = department || 'Emergency';
+            roleSpecificData.designation = otherData.designation || 'Nurse';
+        } else if (roleLower === 'lab') {
+            roleSpecificData.department = 'Laboratory';
+            roleSpecificData.designation = 'Lab Incharge';
+        } else if (roleLower === 'pharmacy') {
+            roleSpecificData.department = 'Pharmacy';
+            roleSpecificData.designation = 'Pharmacy Incharge';
         } else if (roleLower === 'patient') {
             roleSpecificData.gender = otherData.gender || 'Male';
             roleSpecificData.dob = otherData.dob || new Date('1990-01-01');
@@ -204,6 +213,25 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
     } catch (error: any) {
         console.error('Error in adminCreateUser:', error);
         res.status(400).json({ message: error.message || 'Server error', error });
+    }
+};
+
+// Reset Database: Keep Admin accounts and wipe non-admin users, attendance, and records
+export const resetDatabase = async (req: Request, res: Response): Promise<void> => {
+    try {
+        await Doctor.deleteMany({});
+        await Staff.deleteMany({});
+        await LabUser.deleteMany({});
+        await PharmacyUser.deleteMany({});
+        await Attendance.deleteMany({});
+        await Appointment.deleteMany({});
+        await MedicalRecord.deleteMany({});
+        await Employee.deleteMany({});
+
+        res.json({ message: 'Database reset successfully! Kept Admin accounts; wiped all doctors, staff, lab/pharmacy users, and attendance records.' });
+    } catch (error: any) {
+        console.error('Database reset error:', error);
+        res.status(500).json({ message: error.message || 'Failed to reset database', error });
     }
 };
 
