@@ -5,6 +5,8 @@ import Staff from '../models/Staff';
 import Employee from '../models/Employee';
 import Doctor from '../models/Doctor';
 import Admin from '../models/Admin';
+import LabUser from '../models/LabUser';
+import PharmacyUser from '../models/PharmacyUser';
 
 // Helper to format today's date range
 const getTodayRange = () => {
@@ -47,10 +49,8 @@ const autoCloseUnsignedShifts = async () => {
                 name: new RegExp(docNameClean, 'i')
             });
             for (const s of matchingStaff) {
-                // Delete duplicate staff record from Staff collection so only Doctor record remains
                 await Staff.deleteOne({ _id: s._id });
                 const stfId = s.staffId || `STF-${s._id.toString().slice(-4)}`;
-                // Delete duplicate STF attendance logs
                 await Attendance.deleteMany({ staffId: stfId });
             }
         }
@@ -60,13 +60,14 @@ const autoCloseUnsignedShifts = async () => {
 };
 
 // @route   GET /api/attendance/search-staff
-// @desc    Get staff members with today's attendance status (Admins get all; Doctor/Lab/Pharmacy get ONLY their own record)
+// @desc    Get staff members with today's attendance status (Admins/Staff get all; Doctor/Lab/Pharmacy get ONLY their own record)
 export const searchStaff = async (req: Request, res: Response): Promise<void> => {
     try {
         await autoCloseUnsignedShifts();
 
         const queryStr = (req.query.query as string || '').trim();
         const currentUser = (req as any).user;
+        const userRole = (currentUser?.role || '').toLowerCase();
         const isSelfOnlyRole = ['doctor', 'pharmacy', 'lab'].includes(userRole);
 
         const { start, end } = getTodayRange();
@@ -79,20 +80,31 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             let dbUser: any = null;
             if (userRole === 'doctor') {
                 dbUser = await Doctor.findById(currentUserId) || (currentEmail ? await Doctor.findOne({ email: currentEmail }) : null);
+            } else if (userRole === 'lab') {
+                dbUser = await LabUser.findById(currentUserId) 
+                    || (currentEmail ? await LabUser.findOne({ email: currentEmail }) : null)
+                    || await Staff.findById(currentUserId);
+            } else if (userRole === 'pharmacy') {
+                dbUser = await PharmacyUser.findById(currentUserId) 
+                    || (currentEmail ? await PharmacyUser.findOne({ email: currentEmail }) : null)
+                    || await Staff.findById(currentUserId);
             } else {
                 dbUser = await Staff.findById(currentUserId) 
                     || await Employee.findById(currentUserId)
-                    || await Doctor.findById(currentUserId)
-                    || (currentEmail ? (await Staff.findOne({ email: currentEmail }) || await Doctor.findOne({ email: currentEmail }) || await Employee.findOne({ email: currentEmail })) : null);
+                    || (currentEmail ? (await Staff.findOne({ email: currentEmail }) || await Employee.findOne({ email: currentEmail })) : null);
             }
 
             let results: any[] = [];
 
             if (dbUser) {
                 const isDoc = userRole === 'doctor' || !!dbUser.specialization || !!dbUser.doctorId;
-                const sId = dbUser.doctorId || dbUser.staffId || dbUser.employeeId || (isDoc ? `DOC-${dbUser._id.toString().slice(-4)}` : `STF-${dbUser._id.toString().slice(-4)}`);
+                const isLab = userRole === 'lab' || !!dbUser.labId;
+                const isPhm = userRole === 'pharmacy' || !!dbUser.pharmacyId;
+
+                const prefix = isDoc ? 'DOC' : isLab ? 'LAB' : isPhm ? 'PHM' : 'STF';
+                const sId = dbUser.doctorId || dbUser.labId || dbUser.pharmacyId || dbUser.staffId || dbUser.employeeId || `${prefix}-${dbUser._id.toString().slice(-4)}`;
                 const nameStr = isDoc ? cleanDoctorName(dbUser.name) : dbUser.name;
-                const deptStr = dbUser.department || (isDoc ? 'Medical / OPD' : userRole.toUpperCase());
+                const deptStr = dbUser.department || (isDoc ? 'Medical / OPD' : isLab ? 'Laboratory' : isPhm ? 'Pharmacy' : 'Nursing');
                 
                 const todayLog = await Attendance.findOne({ staffId: sId, date: { $gte: start, $lte: end } });
 
@@ -102,7 +114,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                     name: nameStr,
                     email: dbUser.email,
                     department: deptStr,
-                    role: isDoc ? 'Doctor' : (dbUser.designation || userRole.toUpperCase()),
+                    role: isDoc ? 'Doctor' : isLab ? 'Lab Specialist' : isPhm ? 'Pharmacist' : (dbUser.designation || 'Staff Nurse'),
                     phone: dbUser.phone || 'N/A',
                     todayStatus: todayLog ? todayLog.status : 'Not Marked',
                     clockIn: todayLog ? todayLog.clockIn : null,
@@ -111,7 +123,11 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             } else {
                 // Fallback entry if user record is transient
                 const isDoc = userRole === 'doctor';
-                const sId = currentUser.doctorId || currentUser.staffId || currentUser.employeeId || (isDoc ? `DOC-${currentUserId.slice(-4)}` : `STF-${currentUserId.slice(-4)}`);
+                const isLab = userRole === 'lab';
+                const isPhm = userRole === 'pharmacy';
+                const prefix = isDoc ? 'DOC' : isLab ? 'LAB' : isPhm ? 'PHM' : 'STF';
+                
+                const sId = currentUser.doctorId || currentUser.labId || currentUser.pharmacyId || currentUser.staffId || `${prefix}-${currentUserId.slice(-4)}`;
                 const todayLog = await Attendance.findOne({ staffId: sId, date: { $gte: start, $lte: end } });
                 const nameStr = isDoc ? cleanDoctorName(currentUser.name || currentUser.username) : (currentUser.name || currentUser.username || 'Staff User');
 
@@ -120,7 +136,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                     staffId: sId,
                     name: nameStr,
                     email: currentUser.email || 'N/A',
-                    department: isDoc ? 'Medical / OPD' : userRole.toUpperCase(),
+                    department: isDoc ? 'Medical / OPD' : isLab ? 'Laboratory' : isPhm ? 'Pharmacy' : 'Nursing',
                     role: userRole.toUpperCase(),
                     phone: currentUser.phone || 'N/A',
                     todayStatus: todayLog ? todayLog.status : 'Not Marked',
@@ -136,6 +152,8 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
         let staffMembers: any[] = [];
         let employees: any[] = [];
         let doctors: any[] = [];
+        let labUsers: any[] = [];
+        let pharmacyUsers: any[] = [];
 
         if (queryStr) {
             const regex = new RegExp(queryStr, 'i');
@@ -163,11 +181,30 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                     { phone: regex }
                 ]
             }).select('-passwordHash');
+
+            labUsers = await LabUser.find({
+                $or: [
+                    { labId: regex },
+                    { name: regex },
+                    { phone: regex },
+                    { email: regex }
+                ]
+            }).select('-passwordHash');
+
+            pharmacyUsers = await PharmacyUser.find({
+                $or: [
+                    { pharmacyId: regex },
+                    { name: regex },
+                    { phone: regex },
+                    { email: regex }
+                ]
+            }).select('-passwordHash');
         } else {
-            // Return ALL staff members when query is empty (Admin View)
             staffMembers = await Staff.find().select('-passwordHash').sort({ createdAt: -1 });
             employees = await Employee.find().sort({ createdAt: -1 });
             doctors = await Doctor.find().select('-passwordHash').sort({ createdAt: -1 });
+            labUsers = await LabUser.find().select('-passwordHash').sort({ createdAt: -1 });
+            pharmacyUsers = await PharmacyUser.find().select('-passwordHash').sort({ createdAt: -1 });
         }
 
         const todayAttendanceLogs = await Attendance.find({ date: { $gte: start, $lte: end } });
@@ -176,12 +213,11 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             attendanceMap.set(log.staffId, log);
         });
 
-        // Set of Doctor names to deduplicate Staff entries
         const doctorNamesSet = new Set(doctors.map(d => d.name.replace(/^(Dr\.\s*)+/i, '').toLowerCase()));
 
         let results: any[] = [];
 
-        // Add Doctors first
+        // 1. Doctors
         doctors.forEach(d => {
             const dId = d.doctorId || `DOC-${d._id.toString().slice(-4)}`;
             const todayLog = attendanceMap.get(dId);
@@ -199,7 +235,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             });
         });
 
-        // Add Staff members (excluding those who are already Doctors)
+        // 2. Staff Members (Nurses, Compounders, Receptionists)
         staffMembers.forEach(s => {
             const cleanName = s.name.replace(/^(Dr\.\s*)+/i, '').toLowerCase();
             if (doctorNamesSet.has(cleanName)) return; // Skip duplicate staff entry for Doctors
@@ -211,8 +247,8 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 staffId: sId,
                 name: s.name,
                 email: s.email,
-                department: s.department || 'Staff',
-                role: 'Staff',
+                department: s.department || 'Nursing / Compounder',
+                role: 'Hospital Staff',
                 phone: (s as any).phone || 'N/A',
                 todayStatus: todayLog ? todayLog.status : 'Not Marked',
                 clockIn: todayLog ? todayLog.clockIn : null,
@@ -220,6 +256,43 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             });
         });
 
+        // 3. Lab Users
+        labUsers.forEach(l => {
+            const lId = l.labId || `LAB-${l._id.toString().slice(-4)}`;
+            const todayLog = attendanceMap.get(lId);
+            results.push({
+                _id: l._id,
+                staffId: lId,
+                name: l.name,
+                email: l.email,
+                department: l.department || 'Laboratory',
+                role: 'Lab Technician',
+                phone: l.phone || 'N/A',
+                todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                clockIn: todayLog ? todayLog.clockIn : null,
+                clockOut: todayLog ? todayLog.clockOut : null
+            });
+        });
+
+        // 4. Pharmacy Users
+        pharmacyUsers.forEach(p => {
+            const pId = p.pharmacyId || `PHM-${p._id.toString().slice(-4)}`;
+            const todayLog = attendanceMap.get(pId);
+            results.push({
+                _id: p._id,
+                staffId: pId,
+                name: p.name,
+                email: p.email,
+                department: p.department || 'Pharmacy',
+                role: 'Pharmacist',
+                phone: p.phone || 'N/A',
+                todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                clockIn: todayLog ? todayLog.clockIn : null,
+                clockOut: todayLog ? todayLog.clockOut : null
+            });
+        });
+
+        // 5. Employees
         employees.forEach(e => {
             const eId = e.employeeId || `EMP-${e._id.toString().slice(-4)}`;
             const todayLog = attendanceMap.get(eId);
@@ -257,7 +330,6 @@ export const giveAttendance = async (req: Request, res: Response): Promise<void>
 
         const { start, end } = getTodayRange();
 
-        // Check if attendance already marked today for this staffId
         const existingRecord = await Attendance.findOne({
             staffId,
             date: { $gte: start, $lte: end }
@@ -334,7 +406,7 @@ export const signOff = async (req: Request, res: Response): Promise<void> => {
 };
 
 // @route   GET /api/attendance/admin-logs
-// @desc    Get attendance logs (Admins get all; Doctor/Lab/Pharmacy get ONLY their own history)
+// @desc    Get attendance logs (Admins/Staff get all; Doctor/Lab/Pharmacy get ONLY their own history)
 export const getAdminAttendanceLogs = async (req: Request, res: Response): Promise<void> => {
     try {
         await autoCloseUnsignedShifts();
@@ -345,7 +417,9 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
         const search = (req.query.search as string || '').trim();
 
         const currentUser = (req as any).user;
+        const userRole = (currentUser?.role || '').toLowerCase();
         const isSelfOnlyRole = ['doctor', 'pharmacy', 'lab'].includes(userRole);
+        const isAdmin = ['admin', 'super admin', 'hr'].includes(userRole);
 
         const query: any = {};
 
@@ -358,6 +432,10 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
             let foundStaff: any = null;
             if (userRole === 'doctor') {
                 foundStaff = await Doctor.findById(currentUserId) || (currentEmail ? await Doctor.findOne({ email: currentEmail }) : null);
+            } else if (userRole === 'lab') {
+                foundStaff = await LabUser.findById(currentUserId) || (currentEmail ? await LabUser.findOne({ email: currentEmail }) : null) || await Staff.findById(currentUserId);
+            } else if (userRole === 'pharmacy') {
+                foundStaff = await PharmacyUser.findById(currentUserId) || (currentEmail ? await PharmacyUser.findOne({ email: currentEmail }) : null) || await Staff.findById(currentUserId);
             } else {
                 foundStaff = await Staff.findById(currentUserId) 
                     || await Doctor.findById(currentUserId) 
@@ -367,13 +445,19 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
 
             const candidateIds: string[] = [];
             if (foundStaff?.doctorId) candidateIds.push(foundStaff.doctorId);
+            if (foundStaff?.labId) candidateIds.push(foundStaff.labId);
+            if (foundStaff?.pharmacyId) candidateIds.push(foundStaff.pharmacyId);
             if (foundStaff?.staffId) candidateIds.push(foundStaff.staffId);
             if (foundStaff?.employeeId) candidateIds.push(foundStaff.employeeId);
             if (currentUser.doctorId) candidateIds.push(currentUser.doctorId);
+            if (currentUser.labId) candidateIds.push(currentUser.labId);
+            if (currentUser.pharmacyId) candidateIds.push(currentUser.pharmacyId);
             if (currentUser.staffId) candidateIds.push(currentUser.staffId);
             if (currentUserId) {
                 candidateIds.push(`STF-${currentUserId.slice(-4)}`);
                 candidateIds.push(`DOC-${currentUserId.slice(-4)}`);
+                candidateIds.push(`LAB-${currentUserId.slice(-4)}`);
+                candidateIds.push(`PHM-${currentUserId.slice(-4)}`);
             }
 
             const nameParts = (foundStaff?.name || currentName || '').replace(/^(Dr\.\s*)+/i, '').trim();
@@ -414,7 +498,7 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
             }
         }
 
-        if (search && isAdmin) {
+        if (search && (isAdmin || userRole === 'staff')) {
             const regex = new RegExp(search, 'i');
             query.$or = [
                 { staffId: regex },
@@ -426,18 +510,15 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
 
         const records = await Attendance.find(query).sort({ date: -1, clockIn: -1 });
 
-        // Calculate Stats for Filter Selection
         const totalRecords = records.length;
         const presentCount = records.filter(r => r.status === 'Present').length;
         const signedOffCount = records.filter(r => r.status === 'Signed Off').length;
         
-        // UNIQUE CALENDAR DAYS where attendance was marked in this month/period
         const uniqueDatesSet = new Set(
             records.map(r => new Date(r.date).toISOString().slice(0, 10))
         );
         const markedDaysCount = uniqueDatesSet.size;
 
-        // Calculate total days in month / period
         let daysInPeriod = 30;
         if (monthStr && monthStr !== 'all') {
             let y: number | undefined, m: number | undefined;
@@ -454,7 +535,7 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
                 daysInPeriod = new Date(y, m, 0).getDate();
             }
         } else {
-            daysInPeriod = new Date().getDate(); // Days passed so far this month
+            daysInPeriod = new Date().getDate();
         }
 
         const absentCount = Math.max(0, daysInPeriod - markedDaysCount);
@@ -462,9 +543,8 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
             ? ((markedDaysCount / daysInPeriod) * 100).toFixed(1)
             : '0.0';
 
-        // Overall DB stats
         const totalDbRecords = await Attendance.countDocuments();
-        const totalStaffCount = (await Staff.countDocuments()) + (await Employee.countDocuments()) + (await Doctor.countDocuments());
+        const totalStaffCount = (await Staff.countDocuments()) + (await Employee.countDocuments()) + (await Doctor.countDocuments()) + (await LabUser.countDocuments()) + (await PharmacyUser.countDocuments());
 
         res.json({
             records,
@@ -600,7 +680,7 @@ export const deleteStaff = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
-        const models = [Admin, Staff, Doctor];
+        const models = [Admin, Staff, Doctor, LabUser, PharmacyUser];
         let foundAdmin: any = null;
         for (const Model of models) {
             foundAdmin = await Model.findById(adminUserId);
@@ -630,6 +710,16 @@ export const deleteStaff = async (req: Request, res: Response): Promise<void> =>
         if (!deleted) {
             const dRes = await Doctor.deleteOne({ $or: [{ doctorId: staffId }, { _id: staffId }] });
             if (dRes.deletedCount > 0) deleted = true;
+        }
+
+        if (!deleted) {
+            const lRes = await LabUser.deleteOne({ $or: [{ labId: staffId }, { _id: staffId }] });
+            if (lRes.deletedCount > 0) deleted = true;
+        }
+
+        if (!deleted) {
+            const pRes = await PharmacyUser.deleteOne({ $or: [{ pharmacyId: staffId }, { _id: staffId }] });
+            if (pRes.deletedCount > 0) deleted = true;
         }
 
         if (!deleted) {

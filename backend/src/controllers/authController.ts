@@ -5,6 +5,8 @@ import Admin from '../models/Admin';
 import Doctor from '../models/Doctor';
 import Patient from '../models/Patient';
 import Staff from '../models/Staff';
+import LabUser from '../models/LabUser';
+import PharmacyUser from '../models/PharmacyUser';
 import AuditLog from '../models/AuditLog';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_for_hci_hms_development';
@@ -15,8 +17,8 @@ const getModelByRole = (role: string) => {
         case 'doctor': return Doctor;
         case 'patient': return Patient;
         case 'staff': return Staff;
-        case 'lab': return Staff;
-        case 'pharmacy': return Staff;
+        case 'lab': return LabUser;
+        case 'pharmacy': return PharmacyUser;
         default: return null;
     }
 };
@@ -36,7 +38,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const user = await Model.findOne({ email });
+        let user = await Model.findOne({ email });
+        if (!user && (role.toLowerCase() === 'lab' || role.toLowerCase() === 'pharmacy')) {
+            user = await Staff.findOne({ email }) as any;
+        }
+
         if (!user) {
             res.status(401).json({ message: 'Invalid credentials' });
             return;
