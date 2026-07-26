@@ -24,6 +24,68 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
         const userRole = (currentUser?.role || '').toLowerCase();
         const isAdmin = ['admin', 'super admin', 'hr'].includes(userRole);
 
+        const { start, end } = getTodayRange();
+
+        // Non-Admin (Doctor, Pharmacy, Lab, Staff): Fetch ONLY their own profile directly from DB
+        if (!isAdmin && currentUser) {
+            const currentUserId = (currentUser.id || currentUser._id || '').toString();
+            const currentEmail = (currentUser.email || '').toLowerCase();
+
+            let dbUser: any = null;
+            if (userRole === 'doctor') {
+                dbUser = await Doctor.findById(currentUserId) || (currentEmail ? await Doctor.findOne({ email: currentEmail }) : null);
+            } else {
+                dbUser = await Staff.findById(currentUserId) 
+                    || await Employee.findById(currentUserId)
+                    || await Doctor.findById(currentUserId)
+                    || (currentEmail ? (await Staff.findOne({ email: currentEmail }) || await Doctor.findOne({ email: currentEmail }) || await Employee.findOne({ email: currentEmail })) : null);
+            }
+
+            let results: any[] = [];
+
+            if (dbUser) {
+                const sId = dbUser.doctorId || dbUser.staffId || dbUser.employeeId || `STF-${dbUser._id.toString().slice(-4)}`;
+                const nameStr = userRole === 'doctor' && !dbUser.name.startsWith('Dr.') ? `Dr. ${dbUser.name}` : dbUser.name;
+                const deptStr = dbUser.department || (userRole === 'doctor' ? 'Medical / OPD' : userRole.toUpperCase());
+                
+                const todayLog = await Attendance.findOne({ staffId: sId, date: { $gte: start, $lte: end } });
+
+                results = [{
+                    _id: dbUser._id,
+                    staffId: sId,
+                    name: nameStr,
+                    email: dbUser.email,
+                    department: deptStr,
+                    role: userRole === 'doctor' ? 'Doctor' : (dbUser.designation || userRole.toUpperCase()),
+                    phone: dbUser.phone || 'N/A',
+                    todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                    clockIn: todayLog ? todayLog.clockIn : null,
+                    clockOut: todayLog ? todayLog.clockOut : null
+                }];
+            } else {
+                // Fallback entry if user record is transient
+                const sId = currentUser.doctorId || currentUser.staffId || currentUser.employeeId || `STF-${currentUserId.slice(-4)}`;
+                const todayLog = await Attendance.findOne({ staffId: sId, date: { $gte: start, $lte: end } });
+                const nameStr = userRole === 'doctor' && !(currentUser.name || '').startsWith('Dr.') ? `Dr. ${currentUser.name || currentUser.username}` : (currentUser.name || currentUser.username || 'Staff User');
+
+                results = [{
+                    _id: currentUserId,
+                    staffId: sId,
+                    name: nameStr,
+                    email: currentUser.email || 'N/A',
+                    department: userRole === 'doctor' ? 'Medical / OPD' : userRole.toUpperCase(),
+                    role: userRole.toUpperCase(),
+                    phone: currentUser.phone || 'N/A',
+                    todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                    clockIn: todayLog ? todayLog.clockIn : null,
+                    clockOut: todayLog ? todayLog.clockOut : null
+                }];
+            }
+
+            res.json(results);
+            return;
+        }
+
         let staffMembers: any[] = [];
         let employees: any[] = [];
         let doctors: any[] = [];
@@ -55,14 +117,12 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 ]
             }).select('-passwordHash');
         } else {
-            // Return ALL staff members when query is empty
+            // Return ALL staff members when query is empty (Admin View)
             staffMembers = await Staff.find().select('-passwordHash').sort({ createdAt: -1 });
             employees = await Employee.find().sort({ createdAt: -1 });
             doctors = await Doctor.find().select('-passwordHash').sort({ createdAt: -1 });
         }
 
-        // Fetch today's attendance records to attach live status
-        const { start, end } = getTodayRange();
         const todayAttendanceLogs = await Attendance.find({ date: { $gte: start, $lte: end } });
         const attendanceMap = new Map<string, any>();
         todayAttendanceLogs.forEach(log => {
@@ -111,7 +171,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             results.push({
                 _id: d._id,
                 staffId: dId,
-                name: `Dr. ${d.name}`,
+                name: d.name.startsWith('Dr.') ? d.name : `Dr. ${d.name}`,
                 email: d.email,
                 department: d.department || 'Doctor',
                 role: 'Doctor',
@@ -121,38 +181,6 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 clockOut: todayLog ? todayLog.clockOut : null
             });
         });
-
-        // Strict Role Scoping: Non-Admins ONLY get their own attendance profile record!
-        if (!isAdmin && currentUser) {
-            const currentUserId = (currentUser.id || currentUser._id || '').toString();
-            const currentEmail = (currentUser.email || '').toLowerCase();
-            const currentName = (currentUser.name || currentUser.username || '').toLowerCase();
-
-            results = results.filter(r => {
-                const rId = (r._id || '').toString();
-                const rEmail = (r.email || '').toLowerCase();
-                const rName = (r.name || '').toLowerCase();
-                return rId === currentUserId || (currentEmail && rEmail === currentEmail) || rName.includes(currentName);
-            });
-
-            // Fallback: If non-admin user is not found in staff collections yet, build self profile entry
-            if (results.length === 0) {
-                const fallbackId = currentUser.staffId || currentUser.doctorId || currentUser.employeeId || `STF-${currentUserId.slice(-4)}`;
-                const todayLog = attendanceMap.get(fallbackId);
-                results.push({
-                    _id: currentUserId,
-                    staffId: fallbackId,
-                    name: currentUser.name || currentUser.username || 'Staff User',
-                    email: currentUser.email || 'N/A',
-                    department: currentUser.department || userRole.toUpperCase(),
-                    role: userRole.toUpperCase(),
-                    phone: currentUser.phone || 'N/A',
-                    todayStatus: todayLog ? todayLog.status : 'Not Marked',
-                    clockIn: todayLog ? todayLog.clockIn : null,
-                    clockOut: todayLog ? todayLog.clockOut : null
-                });
-            }
-        }
 
         res.json(results);
     } catch (error: any) {
