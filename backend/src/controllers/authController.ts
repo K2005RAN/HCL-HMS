@@ -244,3 +244,114 @@ export const getMe = async (req: any, res: Response): Promise<void> => {
         res.status(500).json({ message: 'Server error', error });
     }
 };
+
+export const updateProfile = async (req: any, res: Response): Promise<void> => {
+    try {
+        if (!req.user || (!req.user.id && !req.user._id)) {
+            res.status(401).json({ message: 'Not authorized' });
+            return;
+        }
+
+        const userId = req.user.id || req.user._id;
+        const userRole = req.user.role || 'user';
+        const { name, phone, address, emergencyContact, bloodGroup, department, specialization } = req.body;
+
+        const PrimaryModel = getModelByRole(userRole);
+        const models = [Admin, Doctor, Patient, Staff];
+
+        let targetModel = PrimaryModel;
+        let foundUser: any = targetModel ? await targetModel.findById(userId) : null;
+
+        if (!foundUser) {
+            for (const Model of models) {
+                foundUser = await Model.findById(userId);
+                if (foundUser) {
+                    targetModel = Model;
+                    break;
+                }
+            }
+        }
+
+        if (!foundUser) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        // Update provided fields
+        if (name !== undefined) foundUser.name = name;
+        if (phone !== undefined) foundUser.phone = phone;
+        if (address !== undefined) foundUser.address = address;
+        if (emergencyContact !== undefined) foundUser.emergencyContact = emergencyContact;
+        if (bloodGroup !== undefined) foundUser.bloodGroup = bloodGroup;
+        if (department !== undefined) foundUser.department = department;
+        if (specialization !== undefined) foundUser.specialization = specialization;
+
+        await foundUser.save();
+
+        const updatedObj = foundUser.toObject();
+        delete updatedObj.passwordHash;
+        updatedObj.role = userRole;
+
+        res.json({ message: 'Profile updated successfully', user: updatedObj });
+    } catch (error: any) {
+        console.error('Error in updateProfile:', error);
+        res.status(500).json({ message: error.message || 'Server error', error });
+    }
+};
+
+export const changePassword = async (req: any, res: Response): Promise<void> => {
+    try {
+        if (!req.user || (!req.user.id && !req.user._id)) {
+            res.status(401).json({ message: 'Not authorized' });
+            return;
+        }
+
+        const userId = req.user.id || req.user._id;
+        const userRole = req.user.role || 'user';
+        const { oldPassword, newPassword } = req.body;
+
+        if (!oldPassword || !newPassword) {
+            res.status(400).json({ message: 'Old password and new password are required' });
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            res.status(400).json({ message: 'New password must be at least 6 characters long' });
+            return;
+        }
+
+        const PrimaryModel = getModelByRole(userRole);
+        const models = [Admin, Doctor, Patient, Staff];
+
+        let foundUser: any = PrimaryModel ? await PrimaryModel.findById(userId) : null;
+
+        if (!foundUser) {
+            for (const Model of models) {
+                foundUser = await Model.findById(userId);
+                if (foundUser) break;
+            }
+        }
+
+        if (!foundUser) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        // Verify old password
+        const isMatch = await bcrypt.compare(oldPassword, foundUser.passwordHash);
+        if (!isMatch) {
+            res.status(400).json({ message: 'Incorrect old password' });
+            return;
+        }
+
+        // Hash new password and save
+        const salt = await bcrypt.genSalt(10);
+        foundUser.passwordHash = await bcrypt.hash(newPassword, salt);
+        await foundUser.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error: any) {
+        console.error('Error in changePassword:', error);
+        res.status(500).json({ message: error.message || 'Server error', error });
+    }
+};

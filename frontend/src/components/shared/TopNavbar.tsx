@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Search, Menu, User as UserIcon, Shield, Mail, LogOut, X, CheckCircle2, Phone, Building } from 'lucide-react';
+import { Bell, Search, Menu, User as UserIcon, Shield, Mail, LogOut, X, CheckCircle2, Phone, Building, Pencil, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -163,23 +163,47 @@ export function TopNavbar() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-3 pt-4">
+                  <div className="grid grid-cols-2 gap-2 pt-4">
                     <Button
+                      onClick={() => {
+                        setIsProfileModalOpen(false);
+                        navigate('/profile?tab=edit');
+                      }}
+                      className="font-bold h-9 bg-primary hover:bg-primary/90 text-xs"
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                      Edit Profile
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        setIsProfileModalOpen(false);
+                        navigate('/profile?tab=security');
+                      }}
+                      className="font-bold h-9 bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 mr-1.5" />
+                      Change Password
+                    </Button>
+
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         setIsProfileModalOpen(false);
                         navigate('/profile');
                       }}
-                      className="flex-1 font-bold h-10"
+                      className="font-bold h-9 text-xs border-slate-200"
                     >
-                      <Shield className="w-4 h-4 mr-1.5" />
-                      Full Profile Page
+                      <Shield className="w-3.5 h-3.5 mr-1.5" />
+                      Full Details
                     </Button>
+
                     <Button
                       variant="outline"
                       onClick={handleLogout}
-                      className="h-10 text-destructive border-destructive/20 hover:bg-destructive/10 font-bold"
+                      className="h-9 text-destructive border-destructive/20 hover:bg-destructive/10 font-bold text-xs"
                     >
-                      <LogOut className="w-4 h-4 mr-1.5" />
+                      <LogOut className="w-3.5 h-3.5 mr-1.5" />
                       Logout
                     </Button>
                   </div>
