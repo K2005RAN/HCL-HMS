@@ -187,7 +187,7 @@ export default function AttendanceDashboard() {
 
         {isAdmin && (
           <motion.div variants={itemVariants} className="flex gap-2">
-            <Button 
+            <Button
               onClick={() => setShowAddStaffModal(true)}
               className="shadow-lg shadow-primary/20 hover:scale-105 transition-transform bg-gradient-to-r from-primary to-indigo-600 font-bold gap-2"
             >
@@ -359,7 +359,7 @@ export default function AttendanceDashboard() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-xl">Database Attendance Log History</CardTitle>
-                  <CardDescription className="text-xs">Live attendance check-in & sign-off records stored in MongoDB (Admin Access Only).</CardDescription>
+                  <CardDescription className="text-xs">Live attendance check-in & sign-off records stored.</CardDescription>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -407,7 +407,7 @@ export default function AttendanceDashboard() {
                     </TableRow>
                   ) : logs.length > 0 ? (
                     logs.map((record, i) => (
-                      <motion.tr 
+                      <motion.tr
                         key={record._id}
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -429,8 +429,8 @@ export default function AttendanceDashboard() {
                         <TableCell className="py-3">
                           <Badge variant="outline" className={
                             record.status === 'Present' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold' :
-                            record.status === 'Signed Off' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-bold' :
-                            'bg-rose-500/10 text-rose-600 border-rose-500/20 font-bold'
+                              record.status === 'Signed Off' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-bold' :
+                                'bg-rose-500/10 text-rose-600 border-rose-500/20 font-bold'
                           }>
                             {record.status}
                           </Badge>
