@@ -97,19 +97,19 @@ export default function ConsultationHistoryView() {
               <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm">
                 <div>
                   <span className="text-muted-foreground block">Blood Pressure</span>
-                  <span className="font-semibold">{record.bloodPressure || '--'}</span>
+                  <span className="font-semibold">{record.bloodPressure ? record.bloodPressure : 'Not Recorded'}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block">Pulse</span>
-                  <span className="font-semibold">{record.pulse ? `${record.pulse} bpm` : '--'}</span>
+                  <span className="font-semibold">{record.pulse ? `${record.pulse} bpm` : 'Not Recorded'}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block">Weight</span>
-                  <span className="font-semibold">{record.weight ? `${record.weight} kg` : '--'}</span>
+                  <span className="font-semibold">{record.weight ? `${record.weight} kg` : 'Not Recorded'}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block">Temperature</span>
-                  <span className="font-semibold">{record.temperature ? `${record.temperature} °F` : '--'}</span>
+                  <span className="font-semibold">{record.temperature ? `${record.temperature} °F` : 'Not Recorded'}</span>
                 </div>
               </div>
               
@@ -289,10 +289,10 @@ export default function ConsultationHistoryView() {
         <div className="mb-8">
           <h3 className="font-bold text-gray-800 uppercase text-xs tracking-wider mb-3 text-green-700">Vitals & Assessment</h3>
           <div className="flex gap-8 text-sm bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <div><span className="font-semibold">BP:</span> {record.bloodPressure || '--'}</div>
-            <div><span className="font-semibold">Pulse:</span> {record.pulse || '--'}</div>
-            <div><span className="font-semibold">Weight:</span> {record.weight ? `${record.weight} kg` : '--'}</div>
-            <div><span className="font-semibold">Temp:</span> {record.temperature ? `${record.temperature} °F` : '--'}</div>
+            <div><span className="font-semibold">BP:</span> {record.bloodPressure || 'N/A'}</div>
+            <div><span className="font-semibold">Pulse:</span> {record.pulse ? `${record.pulse} bpm` : 'N/A'}</div>
+            <div><span className="font-semibold">Weight:</span> {record.weight ? `${record.weight} kg` : 'N/A'}</div>
+            <div><span className="font-semibold">Temp:</span> {record.temperature ? `${record.temperature} °F` : 'N/A'}</div>
           </div>
         </div>
 

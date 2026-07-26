@@ -20,8 +20,8 @@ export default function ConsultationView() {
   const [appointment, setAppointment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Form State
-  const [vitals, setVitals] = useState({ bp: '120/80', pulse: '72', weight: '70', temp: '98.6' });
+  // Form State (empty initial values so actual patient vitals are recorded, not dummy defaults)
+  const [vitals, setVitals] = useState({ bp: '', pulse: '', weight: '', temp: '' });
   const [symptoms, setSymptoms] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [notes, setNotes] = useState('');
