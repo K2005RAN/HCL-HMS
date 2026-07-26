@@ -4,6 +4,7 @@ import Attendance from '../models/Attendance';
 import Staff from '../models/Staff';
 import Employee from '../models/Employee';
 import Doctor from '../models/Doctor';
+import Admin from '../models/Admin';
 
 // Helper to format today's date range
 const getTodayRange = () => {
@@ -349,5 +350,78 @@ export const bulkUploadStaff = async (req: Request, res: Response): Promise<void
     } catch (error: any) {
         console.error('Error in bulkUploadStaff:', error);
         res.status(500).json({ message: error.message || 'Failed to bulk import staff', error });
+    }
+};
+
+// @route   POST /api/attendance/delete-staff
+// @desc    Delete a staff member (requires Admin password confirmation)
+export const deleteStaff = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { staffId, adminPassword } = req.body;
+
+        if (!staffId) {
+            res.status(400).json({ message: 'Staff ID is required for deletion' });
+            return;
+        }
+
+        if (!adminPassword) {
+            res.status(400).json({ message: 'Admin password is required to confirm deletion' });
+            return;
+        }
+
+        const adminUserId = (req as any).user?.id || (req as any).user?._id;
+        const adminRole = ((req as any).user?.role || '').toLowerCase();
+
+        if (!['admin', 'super admin', 'hr'].includes(adminRole)) {
+            res.status(403).json({ message: 'Unauthorized. Only admin users can delete staff members.' });
+            return;
+        }
+
+        // Verify Admin Password
+        const models = [Admin, Staff, Doctor];
+        let foundAdmin: any = null;
+        for (const Model of models) {
+            foundAdmin = await Model.findById(adminUserId);
+            if (foundAdmin && foundAdmin.passwordHash) break;
+        }
+
+        if (!foundAdmin || !foundAdmin.passwordHash) {
+            res.status(404).json({ message: 'Admin user account not found or invalid' });
+            return;
+        }
+
+        const isMatch = await bcrypt.compare(adminPassword, foundAdmin.passwordHash);
+        if (!isMatch) {
+            res.status(401).json({ message: 'Incorrect admin password. Staff deletion cancelled.' });
+            return;
+        }
+
+        // Delete staff from Staff, Employee, or Doctor collections
+        let deleted = false;
+        const sRes = await Staff.deleteOne({ $or: [{ staffId }, { _id: staffId }] });
+        if (sRes.deletedCount > 0) deleted = true;
+
+        if (!deleted) {
+            const eRes = await Employee.deleteOne({ $or: [{ employeeId: staffId }, { _id: staffId }] });
+            if (eRes.deletedCount > 0) deleted = true;
+        }
+
+        if (!deleted) {
+            const dRes = await Doctor.deleteOne({ $or: [{ doctorId: staffId }, { _id: staffId }] });
+            if (dRes.deletedCount > 0) deleted = true;
+        }
+
+        if (!deleted) {
+            res.status(404).json({ message: 'Staff member not found in database' });
+            return;
+        }
+
+        // Clean up associated attendance records
+        await Attendance.deleteMany({ staffId });
+
+        res.json({ message: `Staff member ${staffId} deleted successfully` });
+    } catch (error: any) {
+        console.error('Error in deleteStaff:', error);
+        res.status(500).json({ message: error.message || 'Server error deleting staff', error });
     }
 };

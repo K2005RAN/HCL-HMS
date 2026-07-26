@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Clock, CheckCircle, XCircle, Search, Calendar, UserPlus, LogOut, UserCheck, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Search, Calendar, UserPlus, LogOut, UserCheck, AlertCircle, ShieldCheck, Trash2, KeyRound, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import axios from 'axios';
@@ -44,6 +44,12 @@ export default function AttendanceDashboard() {
   });
   const [addingStaff, setAddingStaff] = useState(false);
   const [addStaffMsg, setAddStaffMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Delete Staff Security Modal State
+  const [staffToDelete, setStaffToDelete] = useState<any | null>(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [deletingStaff, setDeletingStaff] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Fetch all staff members (with optional search query)
   const fetchStaffMembers = async () => {
@@ -151,6 +157,38 @@ export default function AttendanceDashboard() {
       setAddStaffMsg({ type: 'error', text: err.response?.data?.message || 'Failed to add staff.' });
     } finally {
       setAddingStaff(false);
+    }
+  };
+
+  // Delete Staff Submit (Verifies Admin Password)
+  const handleDeleteStaffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!staffToDelete || !adminPassword) return;
+
+    setDeletingStaff(true);
+    setDeleteMsg(null);
+
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/attendance/delete-staff`, {
+        staffId: staffToDelete.staffId,
+        adminPassword
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setDeleteMsg({ type: 'success', text: res.data.message || 'Staff member deleted successfully!' });
+      setTimeout(() => {
+        setStaffToDelete(null);
+        setAdminPassword('');
+        setDeleteMsg(null);
+        fetchStaffMembers();
+        fetchAdminLogs();
+      }, 1000);
+    } catch (err: any) {
+      console.error('Delete staff failed:', err);
+      setDeleteMsg({ type: 'error', text: err.response?.data?.message || 'Failed to delete staff. Please verify your admin password.' });
+    } finally {
+      setDeletingStaff(false);
     }
   };
 
@@ -271,7 +309,7 @@ export default function AttendanceDashboard() {
                         </Badge>
                       </TableCell>
                       <TableCell className="py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end items-center gap-2">
                           <Button
                             size="sm"
                             disabled={actionLoading || staff.todayStatus === 'Present' || staff.todayStatus === 'Signed Off'}
@@ -292,6 +330,22 @@ export default function AttendanceDashboard() {
                             <LogOut className="w-3.5 h-3.5" />
                             Sign Off
                           </Button>
+
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setStaffToDelete(staff);
+                                setAdminPassword('');
+                                setDeleteMsg(null);
+                              }}
+                              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 h-8 w-8 p-0 rounded-lg"
+                              title="Delete Staff Member (Admin Only)"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -472,6 +526,69 @@ export default function AttendanceDashboard() {
             </CardContent>
           </Card>
         </motion.div>
+      )}
+
+      {/* Delete Staff Admin Password Security Confirmation Modal */}
+      {staffToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setStaffToDelete(null)}>
+          <div className="bg-background rounded-3xl shadow-2xl border border-rose-500/30 w-full max-w-md overflow-hidden relative p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b pb-3 text-rose-600 dark:text-rose-400">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Trash2 className="w-5 h-5" />
+                Confirm Staff Deletion
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setStaffToDelete(null)}>✕</Button>
+            </div>
+
+            <div className="space-y-2 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-2xl text-xs">
+              <p className="font-bold text-foreground">You are about to delete the following staff member:</p>
+              <div className="flex justify-between pt-1">
+                <span className="text-muted-foreground">Staff Name:</span>
+                <span className="font-bold text-foreground">{staffToDelete.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Staff ID:</span>
+                <span className="font-mono font-bold text-primary">{staffToDelete.staffId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Department:</span>
+                <span className="font-semibold text-foreground">{staffToDelete.department}</span>
+              </div>
+            </div>
+
+            {deleteMsg && (
+              <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${deleteMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'}`}>
+                {deleteMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                {deleteMsg.text}
+              </div>
+            )}
+
+            <form onSubmit={handleDeleteStaffSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-primary" />
+                  Enter Admin Password to Confirm
+                </Label>
+                <Input
+                  type="password"
+                  required
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Type your Admin Password"
+                  className="h-10 text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button type="button" variant="outline" size="sm" onClick={() => setStaffToDelete(null)}>Cancel</Button>
+                <Button type="submit" disabled={deletingStaff || !adminPassword} size="sm" className="bg-rose-600 hover:bg-rose-700 text-white font-bold gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {deletingStaff ? 'Verifying & Deleting...' : 'Confirm & Delete Staff'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Add Staff Modal (Manual & CSV Import) */}

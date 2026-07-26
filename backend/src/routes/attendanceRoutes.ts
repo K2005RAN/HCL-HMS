@@ -5,7 +5,8 @@ import {
     signOff, 
     getAdminAttendanceLogs, 
     addStaffManual, 
-    bulkUploadStaff 
+    bulkUploadStaff,
+    deleteStaff
 } from '../controllers/attendanceController';
 import { protect, authorize } from '../middlewares/authMiddleware';
 
@@ -22,5 +23,6 @@ router.post('/sign-off', signOff);
 router.get('/admin-logs', authorize('admin', 'super admin', 'hr', 'staff'), getAdminAttendanceLogs);
 router.post('/add-staff', authorize('admin', 'super admin', 'hr'), addStaffManual);
 router.post('/bulk-staff', authorize('admin', 'super admin', 'hr'), bulkUploadStaff);
+router.post('/delete-staff', authorize('admin', 'super admin', 'hr'), deleteStaff);
 
 export default router;
