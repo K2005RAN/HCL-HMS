@@ -13,7 +13,9 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (allowedRoles && allowedRoles.length > 0 && user) {
-    if (!allowedRoles.includes(user.role) && user.role !== 'admin') {
+    const userRole = (user.role || '').toLowerCase();
+    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase());
+    if (!normalizedAllowed.includes(userRole) && userRole !== 'admin' && userRole !== 'super admin') {
       // Super Admin bypasses role checks, otherwise redirect if not authorized
       return <Navigate to="/dashboard" replace />;
     }

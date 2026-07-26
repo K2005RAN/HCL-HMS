@@ -69,7 +69,7 @@ function App() {
                 <Route path="billing" element={<BillingDashboard />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={[]} /> /* Only Admin */}>
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="audit-logs" element={<AuditLogsView />} />
                 <Route path="user-management" element={<UserManagement />} />
               </Route>

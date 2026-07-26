@@ -9,9 +9,12 @@ export default function DashboardRouter() {
     return <Navigate to="/login" replace />;
   }
 
+  const role = (user.role || '').toLowerCase();
+
   // Route based on role
-  switch (user.role) {
+  switch (role) {
     case 'admin':
+    case 'super admin':
       return <SuperAdminDashboard />;
     case 'doctor':
       return <Navigate to="/doctor-dashboard" replace />;
