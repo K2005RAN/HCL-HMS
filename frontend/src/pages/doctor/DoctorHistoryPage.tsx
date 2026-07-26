@@ -8,6 +8,7 @@ import { History, Search, FileText, User, Calendar, Pill, CheckCircle, Clock } f
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config/api';
 
 export default function DoctorHistoryPage() {
   const navigate = useNavigate();
@@ -23,11 +24,11 @@ export default function DoctorHistoryPage() {
       if (query.length >= 3) {
         let records: any[] = [];
         try {
-          const patientRes = await axios.get(`http://localhost:5000/api/appointments/meta/search-patient?query=${query}`, {
+          const patientRes = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${query}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (patientRes.data?._id) {
-            const res = await axios.get(`http://localhost:5000/api/doctor/history?patientId=${patientRes.data._id}&global=true`, {
+            const res = await axios.get(`${API_BASE_URL}/api/doctor/history?patientId=${patientRes.data._id}&global=true`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             records = res.data;
@@ -37,7 +38,7 @@ export default function DoctorHistoryPage() {
         }
 
         if (!records || records.length === 0) {
-          const allRes = await axios.get('http://localhost:5000/api/doctor/history?global=true', {
+          const allRes = await axios.get(`${API_BASE_URL}/api/doctor/history?global=true`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const q = query.toLowerCase();
@@ -50,7 +51,7 @@ export default function DoctorHistoryPage() {
         }
         setHistory(records);
       } else {
-        const res = await axios.get('http://localhost:5000/api/doctor/history?global=true', {
+        const res = await axios.get(`${API_BASE_URL}/api/doctor/history?global=true`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setHistory(res.data);

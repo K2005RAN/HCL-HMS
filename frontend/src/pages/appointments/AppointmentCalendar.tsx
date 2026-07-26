@@ -8,6 +8,7 @@ import { Calendar as CalendarIcon, Clock, User, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config/api';
 
 export default function AppointmentCalendar() {
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -46,8 +47,8 @@ export default function AppointmentCalendar() {
     try {
       setLoading(true);
       const [apptsRes, docsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/appointments', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('http://localhost:5000/api/appointments/meta/doctors', { headers: { Authorization: `Bearer ${token}` } })
+        axios.get(`${API_BASE_URL}/api/appointments`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/appointments/meta/doctors`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setAppointments(apptsRes.data);
       setDoctors(docsRes.data);
@@ -74,7 +75,7 @@ export default function AppointmentCalendar() {
     const searchPatient = async () => {
       if (searchPhone.length >= 3) { // Reduced to 3 to allow searching by ID like EMP-123
         try {
-          const res = await axios.get(`http://localhost:5000/api/appointments/meta/search-patient?query=${searchPhone}`, {
+          const res = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${searchPhone}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           setPatientFound(res.data);
@@ -98,7 +99,7 @@ export default function AppointmentCalendar() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/appointments', formData, {
+      await axios.post(`${API_BASE_URL}/api/appointments`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setShowAddModal(false);
@@ -125,7 +126,7 @@ export default function AppointmentCalendar() {
         chronicDiseases: newPatientData.chronicDiseases ? newPatientData.chronicDiseases.split(',').map(s => s.trim()).filter(Boolean) : [],
         allergies: newPatientData.allergies ? newPatientData.allergies.split(',').map(s => s.trim()).filter(Boolean) : []
       };
-      const res = await axios.post('http://localhost:5000/api/auth/admin-create-user', payload, {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/admin-create-user`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -135,7 +136,7 @@ export default function AppointmentCalendar() {
       
     } catch (error: any) {
       console.error("Failed to register patient", error);
-      alert(error.response?.data?.message || "Error registering patient.");
+      alert(error.response?.data?.message || error.message || "Error registering patient.");
     } finally {
       setRegistering(false);
     }

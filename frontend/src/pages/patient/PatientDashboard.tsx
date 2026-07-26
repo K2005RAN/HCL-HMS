@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
 import { FileText, History, Activity, AlertCircle, Droplet, UserCircle, Printer } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function PatientDashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/patient/dashboard', {
+        const res = await axios.get(`${API_BASE_URL}/api/patient/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setData(res.data);

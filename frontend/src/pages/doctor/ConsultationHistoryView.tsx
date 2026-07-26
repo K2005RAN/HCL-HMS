@@ -6,6 +6,7 @@ import { ArrowLeft, Printer, FileText } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { openPdfReport } from '@/lib/utils';
+import { API_BASE_URL } from '@/config/api';
 
 export default function ConsultationHistoryView() {
   const navigate = useNavigate();
@@ -20,8 +21,8 @@ export default function ConsultationHistoryView() {
     const fetchRecord = async () => {
       try {
         const endpoint = user?.role === 'patient' 
-          ? `http://localhost:5000/api/patient/history/${recordId}`
-          : `http://localhost:5000/api/doctor/history/${recordId}`;
+          ? `${API_BASE_URL}/api/patient/history/${recordId}`
+          : `${API_BASE_URL}/api/doctor/history/${recordId}`;
           
         const res = await axios.get(endpoint, {
           headers: { Authorization: `Bearer ${token}` }
@@ -31,7 +32,7 @@ export default function ConsultationHistoryView() {
         const patientIdVal = res.data?.patientId?._id || res.data?.patientId;
         if (patientIdVal) {
           try {
-            const labRes = await axios.get(`http://localhost:5000/api/lab/patient/${patientIdVal}`, {
+            const labRes = await axios.get(`${API_BASE_URL}/api/lab/patient/${patientIdVal}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             setLabTests(labRes.data);

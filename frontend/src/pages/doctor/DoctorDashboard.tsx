@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 export default function DoctorDashboard() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export default function DoctorDashboard() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/doctor/dashboard', {
+        const res = await axios.get(`${API_BASE_URL}/api/doctor/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setDashboardData(res.data);
@@ -41,7 +42,7 @@ export default function DoctorDashboard() {
     
     const fetchHistory = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/doctor/history', {
+        const res = await axios.get(`${API_BASE_URL}/api/doctor/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setHistory(res.data);
@@ -64,13 +65,13 @@ export default function DoctorDashboard() {
         setHistoryLoading(true);
         try {
           // First find the patient
-          const patientRes = await axios.get(`http://localhost:5000/api/appointments/meta/search-patient?query=${searchPhone}`, {
+          const patientRes = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${searchPhone}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
           if (patientRes.data && patientRes.data._id) {
             // Then fetch global history for this patient
-            const histRes = await axios.get(`http://localhost:5000/api/doctor/history?patientId=${patientRes.data._id}&global=true`, {
+            const histRes = await axios.get(`${API_BASE_URL}/api/doctor/history?patientId=${patientRes.data._id}&global=true`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             setHistory(histRes.data);
@@ -84,7 +85,7 @@ export default function DoctorDashboard() {
       } else if (searchPhone.length === 0) {
         // Reset to doctor's own history
         setHistoryLoading(true);
-        axios.get('http://localhost:5000/api/doctor/history', {
+        axios.get(`${API_BASE_URL}/api/doctor/history`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => setHistory(res.data)).finally(() => setHistoryLoading(false));
       }

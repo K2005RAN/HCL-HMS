@@ -10,6 +10,7 @@ import { ArrowLeft, Save, Printer, Trash2, FileText } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { openPdfReport } from '@/lib/utils';
+import { API_BASE_URL } from '@/config/api';
 
 export default function ConsultationView() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function ConsultationView() {
   const [loading, setLoading] = useState(true);
   
   // Form State
-  const [vitals, setVitals] = useState({ bp: '', pulse: '', weight: '', temp: '' });
+  const [vitals, setVitals] = useState({ bp: '120/80', pulse: '72', weight: '70', temp: '98.6' });
   const [symptoms, setSymptoms] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [notes, setNotes] = useState('');
@@ -37,7 +38,7 @@ export default function ConsultationView() {
 
   const fetchPatientLabTests = async (patientIdStr: string) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/lab/patient/${patientIdStr}`, {
+      const res = await axios.get(`${API_BASE_URL}/api/lab/patient/${patientIdStr}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPatientLabTests(res.data);
@@ -49,7 +50,7 @@ export default function ConsultationView() {
   useEffect(() => {
     const fetchAppointment = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/doctor/appointment/${appointmentId}`, {
+        const res = await axios.get(`${API_BASE_URL}/api/doctor/appointment/${appointmentId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setAppointment(res.data);
@@ -94,7 +95,7 @@ export default function ConsultationView() {
     }
     setOrderingLab(true);
     try {
-      await axios.post('http://localhost:5000/api/lab/order', {
+      await axios.post(`${API_BASE_URL}/api/lab/order`, {
         patientId: patientIdVal,
         testName: labTestInput.testName,
         category: labTestInput.category,
@@ -151,7 +152,7 @@ export default function ConsultationView() {
         prescription: finalPrescription
       };
       
-      await axios.post(`http://localhost:5000/api/doctor/consultation/${appointmentId}`, payload, {
+      await axios.post(`${API_BASE_URL}/api/doctor/consultation/${appointmentId}`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

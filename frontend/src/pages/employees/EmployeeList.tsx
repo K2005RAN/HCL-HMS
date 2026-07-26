@@ -7,6 +7,7 @@ import CSVImportWizard from '@/components/employees/CSVImportWizard';
 import { useAuth } from '@/context/AuthContext';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { API_BASE_URL } from '@/config/api';
 
 export default function EmployeeList() {
   const [showImport, setShowImport] = useState(false);
@@ -17,7 +18,7 @@ export default function EmployeeList() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/employees', {
+        const res = await axios.get(`${API_BASE_URL}/api/employees`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setEmployees(res.data);

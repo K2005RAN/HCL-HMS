@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config/api';
 
 export default function LaboratoryDashboard() {
   const { token } = useAuth();
@@ -45,7 +46,7 @@ export default function LaboratoryDashboard() {
 
   const fetchTests = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/lab/tests', {
+      const res = await axios.get(`${API_BASE_URL}/api/lab/tests`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTests(res.data);
@@ -65,7 +66,7 @@ export default function LaboratoryDashboard() {
   const handleUpdateStatus = async (testId: string, status: string, payload: any = {}) => {
     setUpdating(true);
     try {
-      await axios.put(`http://localhost:5000/api/lab/tests/${testId}/status`, {
+      await axios.put(`${API_BASE_URL}/api/lab/tests/${testId}/status`, {
         status,
         ...payload
       }, {

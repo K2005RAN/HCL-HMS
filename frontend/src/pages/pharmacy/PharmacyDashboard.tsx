@@ -10,6 +10,7 @@ import { Pill, AlertTriangle, Clock, Search, Plus, X, CheckCircle, FileText, Ind
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config/api';
 
 export default function PharmacyDashboard() {
   const { token } = useAuth();
@@ -42,7 +43,7 @@ export default function PharmacyDashboard() {
   const fetchMedicines = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/pharmacy/medicines', {
+      const res = await axios.get(`${API_BASE_URL}/api/pharmacy/medicines`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setInventory(res.data);
@@ -56,7 +57,7 @@ export default function PharmacyDashboard() {
   const fetchPrescriptions = async () => {
     try {
       setPrescriptionsLoading(true);
-      const res = await axios.get('http://localhost:5000/api/pharmacy/prescriptions', {
+      const res = await axios.get(`${API_BASE_URL}/api/pharmacy/prescriptions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPrescriptions(res.data);
@@ -77,7 +78,7 @@ export default function PharmacyDashboard() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/pharmacy/medicines', formData, {
+      await axios.post(`${API_BASE_URL}/api/pharmacy/medicines`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setShowAddModal(false);
@@ -95,7 +96,7 @@ export default function PharmacyDashboard() {
     if (!selectedRecord) return;
     setDispensing(true);
     try {
-      await axios.post('http://localhost:5000/api/pharmacy/dispense-and-bill', {
+      await axios.post(`${API_BASE_URL}/api/pharmacy/dispense-and-bill`, {
         recordId: selectedRecord._id,
         billedAmount: billingAmount,
         paymentMethod

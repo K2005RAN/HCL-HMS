@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle, UserPlus, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 export default function UserManagement() {
   const [loading, setLoading] = useState(false);
@@ -50,7 +51,7 @@ export default function UserManagement() {
       }
 
       // We use the new admin-specific endpoint to handle custom ID generation
-      await axios.post('http://localhost:5000/api/auth/admin-create-user', payload, {
+      await axios.post(`${API_BASE_URL}/api/auth/admin-create-user`, payload, {
         headers: {
           // If you have token verification for this endpoint, add it here.
           // 'Authorization': `Bearer ${token}` 

@@ -134,31 +134,38 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
 
         const existingUser = await Model.findOne({ email });
         if (existingUser) {
-            res.status(400).json({ message: 'User already exists' });
+            res.status(400).json({ message: 'User with this email already exists' });
             return;
         }
 
         const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
+        const passwordHash = await bcrypt.hash(password || 'Password123!', salt);
 
-        // Generate custom ID based on role
+        // Generate custom ID safely without duplicate collisions
         let customIdField = {};
-        const count = await Model.countDocuments() + 1;
-        const paddedCount = count.toString().padStart(4, '0');
-        
-        if (role.toLowerCase() === 'doctor') {
-            customIdField = { doctorId: `DOC-${paddedCount}` };
-        } else if (role.toLowerCase() === 'patient') {
-            customIdField = { patientId: `PAT-${paddedCount}` };
-        } else if (role.toLowerCase() === 'staff') {
-            customIdField = { staffId: `STF-${paddedCount}` };
-        } else if (role.toLowerCase() === 'admin') {
-            customIdField = { adminId: `ADM-${paddedCount}` };
-        } else if (role.toLowerCase() === 'employee') {
-            customIdField = { employeeId: `EMP-${paddedCount}` };
+        const roleLower = role.toLowerCase();
+        let prefix = 'PAT';
+        let idKey = 'patientId';
+
+        if (roleLower === 'doctor') { prefix = 'DOC'; idKey = 'doctorId'; }
+        else if (roleLower === 'patient') { prefix = 'PAT'; idKey = 'patientId'; }
+        else if (roleLower === 'staff') { prefix = 'STF'; idKey = 'staffId'; }
+        else if (roleLower === 'admin') { prefix = 'ADM'; idKey = 'adminId'; }
+        else if (roleLower === 'employee') { prefix = 'EMP'; idKey = 'employeeId'; }
+
+        let count = await Model.countDocuments() + 1;
+        let idFound = false;
+        while (!idFound) {
+            const candidateId = `${prefix}-${count.toString().padStart(4, '0')}`;
+            const exists = await Model.findOne({ [idKey]: candidateId });
+            if (!exists) {
+                customIdField = { [idKey]: candidateId };
+                idFound = true;
+            } else {
+                count++;
+            }
         }
 
-        const roleLower = role.toLowerCase();
         const roleSpecificData: any = {};
 
         if (roleLower === 'doctor') {

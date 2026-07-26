@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from '@/context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 export default function CSVImportWizard({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(1);
@@ -48,7 +49,7 @@ export default function CSVImportWizard({ onComplete }: { onComplete: () => void
     setStep(5);
     setProgress(30);
     try {
-      await axios.post('http://localhost:5000/api/employees/bulk-upload', { employees: data }, {
+      await axios.post(`${API_BASE_URL}/api/employees/bulk-upload`, { employees: data }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProgress(100);
