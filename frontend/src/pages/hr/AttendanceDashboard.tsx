@@ -27,9 +27,9 @@ export default function AttendanceDashboard() {
 
   // Admin Logs State
   const [logs, setLogs] = useState<any[]>([]);
-  const [stats, setStats] = useState({ totalCount: 0, presentCount: 0, signedOffCount: 0, absentCount: 0 });
+  const [stats, setStats] = useState({ totalCount: 0, totalDbRecords: 0, totalStaffCount: 0, presentCount: 0, signedOffCount: 0 });
   const [logsLoading, setLogsLoading] = useState(false);
-  const [logFilterDate, setLogFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [logFilterDate, setLogFilterDate] = useState('');
   const [logSearchQuery, setLogSearchQuery] = useState('');
 
   // Add Staff Manual State
@@ -56,7 +56,7 @@ export default function AttendanceDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLogs(res.data.records || []);
-      setStats(res.data.stats || { totalCount: 0, presentCount: 0, signedOffCount: 0, absentCount: 0 });
+      setStats(res.data.stats || { totalCount: 0, totalDbRecords: 0, totalStaffCount: 0, presentCount: 0, signedOffCount: 0 });
     } catch (err) {
       console.error('Failed to fetch admin logs:', err);
     } finally {
@@ -296,13 +296,13 @@ export default function AttendanceDashboard() {
           <motion.div variants={itemVariants}>
             <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-border/50">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-semibold">Today's Total Logs</CardTitle>
+                <CardTitle className="text-sm font-semibold">Total DB Attendance Logs</CardTitle>
                 <div className="p-2 rounded-xl bg-primary/10">
                   <Clock className="h-4 w-4 text-primary" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold">{stats.totalCount}</div>
+                <div className="text-3xl font-extrabold">{stats.totalDbRecords || logs.length}</div>
               </CardContent>
             </Card>
           </motion.div>
@@ -316,7 +316,7 @@ export default function AttendanceDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-500">{stats.presentCount}</div>
+                <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-500">{stats.presentCount || 0}</div>
               </CardContent>
             </Card>
           </motion.div>
@@ -324,13 +324,13 @@ export default function AttendanceDashboard() {
           <motion.div variants={itemVariants}>
             <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-indigo-500/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Signed Off</CardTitle>
+                <CardTitle className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Signed Off Today</CardTitle>
                 <div className="p-2 rounded-xl bg-indigo-500/10">
                   <LogOut className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{stats.signedOffCount}</div>
+                <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{stats.signedOffCount || 0}</div>
               </CardContent>
             </Card>
           </motion.div>
@@ -338,13 +338,13 @@ export default function AttendanceDashboard() {
           <motion.div variants={itemVariants}>
             <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-slate-500/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-semibold text-slate-500">Database Records</CardTitle>
+                <CardTitle className="text-sm font-semibold text-slate-500">Registered Staff in DB</CardTitle>
                 <div className="p-2 rounded-xl bg-slate-500/10">
                   <ShieldCheck className="h-4 w-4 text-slate-500" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold text-slate-700 dark:text-slate-300">{stats.totalCount}</div>
+                <div className="text-3xl font-extrabold text-slate-700 dark:text-slate-300">{stats.totalStaffCount || 0}</div>
               </CardContent>
             </Card>
           </motion.div>
@@ -359,7 +359,6 @@ export default function AttendanceDashboard() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-xl">Database Attendance Log History</CardTitle>
-                  <CardDescription className="text-xs">Live attendance check-in & sign-off records stored.</CardDescription>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -371,6 +370,11 @@ export default function AttendanceDashboard() {
                       onChange={(e) => setLogFilterDate(e.target.value)}
                       className="h-9 w-36 text-xs bg-background/50"
                     />
+                    {logFilterDate && (
+                      <Button size="sm" variant="ghost" onClick={() => setLogFilterDate('')} className="h-9 text-xs px-2 text-primary font-bold">
+                        All Dates
+                      </Button>
+                    )}
                   </div>
 
                   <div className="relative flex-1 sm:w-60">

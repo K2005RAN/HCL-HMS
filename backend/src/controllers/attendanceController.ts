@@ -190,15 +190,11 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
 
         const query: any = {};
 
-        if (dateStr) {
+        if (dateStr && dateStr !== 'all') {
             const start = new Date(dateStr);
             start.setHours(0, 0, 0, 0);
             const end = new Date(dateStr);
             end.setHours(23, 59, 59, 999);
-            query.date = { $gte: start, $lte: end };
-        } else {
-            // Default to today's records
-            const { start, end } = getTodayRange();
             query.date = { $gte: start, $lte: end };
         }
 
@@ -214,19 +210,23 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
 
         const records = await Attendance.find(query).sort({ clockIn: -1, createdAt: -1 });
 
-        // Calculate statistics
-        const totalCount = records.length;
-        const presentCount = records.filter(r => r.status === 'Present').length;
-        const signedOffCount = records.filter(r => r.status === 'Signed Off').length;
-        const absentCount = records.filter(r => r.status === 'Absent').length;
+        // Calculate today's stats and overall DB stats
+        const { start, end } = getTodayRange();
+        const todayRecords = await Attendance.find({ date: { $gte: start, $lte: end } });
+        
+        const totalStaffCount = (await Staff.countDocuments()) + (await Employee.countDocuments()) + (await Doctor.countDocuments());
+        const totalDbRecords = await Attendance.countDocuments();
+        const presentCount = todayRecords.filter(r => r.status === 'Present').length;
+        const signedOffCount = todayRecords.filter(r => r.status === 'Signed Off').length;
 
         res.json({
             records,
             stats: {
-                totalCount,
+                totalCount: records.length,
+                totalDbRecords,
+                totalStaffCount,
                 presentCount,
-                signedOffCount,
-                absentCount
+                signedOffCount
             }
         });
     } catch (error: any) {
