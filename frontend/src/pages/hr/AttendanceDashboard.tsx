@@ -434,19 +434,21 @@ export default function AttendanceDashboard() {
                               Sign Off
                             </Button>
 
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setStaffToDelete(staff);
-                                setAdminPassword('');
-                                setDeleteMsg(null);
-                              }}
-                              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 h-8 w-8 p-0 rounded-lg"
-                              title="Delete Staff Member (Admin Only)"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setStaffToDelete(staff);
+                                  setAdminPassword('');
+                                  setDeleteMsg(null);
+                                }}
+                                className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 h-8 w-8 p-0 rounded-lg"
+                                title="Delete Staff Member (Admin Only)"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
