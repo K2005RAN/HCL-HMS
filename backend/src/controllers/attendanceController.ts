@@ -15,10 +15,34 @@ const getTodayRange = () => {
     return { start, end };
 };
 
+// Auto-close any unclosed shifts from previous days (sets clockOut & updates status to Signed Off)
+const autoCloseUnsignedShifts = async () => {
+    try {
+        const { start } = getTodayRange();
+        const unclosedRecords = await Attendance.find({
+            date: { $lt: start },
+            status: 'Present'
+        });
+
+        for (const record of unclosedRecords) {
+            const shiftEnd = new Date(record.date);
+            shiftEnd.setHours(23, 59, 59, 999);
+            record.clockOut = shiftEnd;
+            record.status = 'Signed Off';
+            await record.save();
+        }
+    } catch (err) {
+        console.error('Error in autoCloseUnsignedShifts:', err);
+    }
+};
+
 // @route   GET /api/attendance/search-staff
 // @desc    Get staff members with today's attendance status (Admins get all; Doctor/Lab/Pharmacy get ONLY their own record)
 export const searchStaff = async (req: Request, res: Response): Promise<void> => {
     try {
+        // Auto-close unclosed shifts from previous days so today starts completely fresh
+        await autoCloseUnsignedShifts();
+
         const queryStr = (req.query.query as string || '').trim();
         const currentUser = (req as any).user;
         const userRole = (currentUser?.role || '').toLowerCase();
