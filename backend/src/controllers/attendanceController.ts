@@ -317,27 +317,36 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
         if (!isAdmin && currentUser) {
             const currentUserId = (currentUser.id || currentUser._id || '').toString();
             const currentEmail = (currentUser.email || '').toLowerCase();
-            
-            // Find staff object for this user
-            let foundStaff: any = await Staff.findById(currentUserId) 
-                || await Doctor.findById(currentUserId) 
-                || await Employee.findById(currentUserId);
+            const currentName = (currentUser.name || currentUser.username || '').replace(/^Dr\.\s*/i, '').trim();
 
-            if (!foundStaff && currentEmail) {
-                foundStaff = await Staff.findOne({ email: currentEmail }) 
-                    || await Doctor.findOne({ email: currentEmail }) 
-                    || await Employee.findOne({ email: currentEmail });
+            let foundStaff: any = null;
+            if (userRole === 'doctor') {
+                foundStaff = await Doctor.findById(currentUserId) || (currentEmail ? await Doctor.findOne({ email: currentEmail }) : null);
+            } else {
+                foundStaff = await Staff.findById(currentUserId) 
+                    || await Doctor.findById(currentUserId) 
+                    || await Employee.findById(currentUserId)
+                    || (currentEmail ? (await Staff.findOne({ email: currentEmail }) || await Doctor.findOne({ email: currentEmail }) || await Employee.findOne({ email: currentEmail })) : null);
             }
 
-            const myStaffId = foundStaff?.staffId || foundStaff?.doctorId || foundStaff?.employeeId || currentUser.staffId || currentUser.doctorId;
+            const candidateIds: string[] = [];
+            if (foundStaff?.doctorId) candidateIds.push(foundStaff.doctorId);
+            if (foundStaff?.staffId) candidateIds.push(foundStaff.staffId);
+            if (foundStaff?.employeeId) candidateIds.push(foundStaff.employeeId);
+            if (currentUser.doctorId) candidateIds.push(currentUser.doctorId);
+            if (currentUser.staffId) candidateIds.push(currentUser.staffId);
+            if (currentUserId) {
+                candidateIds.push(`STF-${currentUserId.slice(-4)}`);
+                candidateIds.push(`DOC-${currentUserId.slice(-4)}`);
+            }
+
+            const nameParts = (foundStaff?.name || currentName || '').replace(/^Dr\.\s*/i, '').trim();
             
-            if (myStaffId) {
-                query.staffId = myStaffId;
-            } else {
-                query.$or = [
-                    { staffId: `STF-${currentUserId.slice(-4)}` },
-                    { staffName: new RegExp(currentUser.name || currentUser.username || '', 'i') }
-                ];
+            query.$or = [
+                { staffId: { $in: candidateIds } }
+            ];
+            if (nameParts && nameParts.length >= 2) {
+                query.$or.push({ staffName: new RegExp(nameParts, 'i') });
             }
         } else if (staffIdFilter && staffIdFilter !== 'all') {
             query.staffId = staffIdFilter;
@@ -351,10 +360,22 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
             end.setHours(23, 59, 59, 999);
             query.date = { $gte: start, $lte: end };
         } else if (monthStr && monthStr !== 'all') {
-            const [year, month] = monthStr.split('-').map(Number);
-            const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-            const end = new Date(year, month, 0, 23, 59, 59, 999);
-            query.date = { $gte: start, $lte: end };
+            let year: number | undefined;
+            let month: number | undefined;
+            if (monthStr.includes('-')) {
+                [year, month] = monthStr.split('-').map(Number);
+            } else {
+                const dateObj = new Date(monthStr);
+                if (!isNaN(dateObj.getTime())) {
+                    year = dateObj.getFullYear();
+                    month = dateObj.getMonth() + 1;
+                }
+            }
+            if (year && month) {
+                const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+                const end = new Date(year, month, 0, 23, 59, 59, 999);
+                query.date = { $gte: start, $lte: end };
+            }
         }
 
         if (search && isAdmin) {
