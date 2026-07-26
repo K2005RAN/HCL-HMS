@@ -1,11 +1,26 @@
 import { Router } from 'express';
-import { markAttendance, getAttendance } from '../controllers/attendanceController';
+import { 
+    searchStaff, 
+    giveAttendance, 
+    signOff, 
+    getAdminAttendanceLogs, 
+    addStaffManual, 
+    bulkUploadStaff 
+} from '../controllers/attendanceController';
 import { protect, authorize } from '../middlewares/authMiddleware';
 
 const router = Router();
 
 router.use(protect);
-router.post('/mark', authorize('HR', 'Super Admin'), markAttendance);
-router.get('/', authorize('HR', 'Super Admin'), getAttendance);
+
+// Staff Attendance Give & Sign Off endpoints (Accessible by all logged in staff & admin)
+router.get('/search-staff', searchStaff);
+router.post('/give-attendance', giveAttendance);
+router.post('/sign-off', signOff);
+
+// Admin Attendance Logs & Staff Management Endpoints (Accessible by Admin / HR / Staff)
+router.get('/admin-logs', authorize('admin', 'super admin', 'hr', 'staff'), getAdminAttendanceLogs);
+router.post('/add-staff', authorize('admin', 'super admin', 'hr'), addStaffManual);
+router.post('/bulk-staff', authorize('admin', 'super admin', 'hr'), bulkUploadStaff);
 
 export default router;
