@@ -151,7 +151,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 export const adminCreateUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const roleLower = role.toLowerCase();
+        const { email, password, role, name, department, ...otherData } = req.body;
+
+        const Model = getModelByRole(role);
+        if (!Model) {
+            res.status(400).json({ message: 'Invalid role' });
+            return;
+        }
+
+        const roleLower = (role || '').toLowerCase();
         const userEmail = (email && email.trim() !== '')
             ? email.trim()
             : `${roleLower}_${otherData.phone ? otherData.phone.replace(/\D/g, '') : Date.now()}@hospital.com`;
@@ -167,7 +175,6 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
 
         // Generate custom ID safely without duplicate collisions
         let customIdField = {};
-        const roleLower = role.toLowerCase();
         let prefix = 'PAT';
         let idKey = 'patientId';
 
