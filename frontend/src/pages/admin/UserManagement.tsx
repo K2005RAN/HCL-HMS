@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle, UserPlus, ShieldAlert, Trash2, KeyRound, RefreshCw, Stethoscope, Pill, TestTube, Users } from 'lucide-react';
+import { AlertCircle, CheckCircle, UserPlus, ShieldAlert, Pill, TestTube } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
@@ -13,11 +13,6 @@ export default function UserManagement() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Reset Database State
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [resetMsg, setResetMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  
   const [formData, setFormData] = useState({
     role: 'doctor',
     name: '',
@@ -99,41 +94,15 @@ export default function UserManagement() {
     }
   };
 
-  // Execute Database Reset
-  const handleResetDatabase = async () => {
-    setResetting(true);
-    setResetMsg(null);
-    try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/reset-database`);
-      setResetMsg({ type: 'success', text: res.data.message || 'Database reset complete! Kept Admin accounts; wiped non-admin users & attendance logs.' });
-      setTimeout(() => {
-        setShowResetModal(false);
-        setResetMsg(null);
-      }, 2000);
-    } catch (err: any) {
-      console.error('Reset database failed:', err);
-      setResetMsg({ type: 'error', text: err.response?.data?.message || 'Failed to reset database.' });
-    } finally {
-      setResetting(false);
-    }
-  };
-
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-10">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">User Management</h2>
           <p className="text-muted-foreground">Provision accounts for Doctors, Lab Incharges, Pharmacy Staff, and Hospital Staff.</p>
         </div>
-        
-        <Button
-          onClick={() => setShowResetModal(true)}
-          variant="destructive"
-          className="shadow-lg shadow-destructive/20 font-bold gap-2 text-xs"
-        >
-          <RefreshCw className="h-4 w-4" /> Reset Database (Wipe Non-Admin Accounts)
-        </Button>
+        <ShieldAlert className="h-8 w-8 text-primary opacity-50" />
       </div>
 
       <motion.div 
@@ -290,49 +259,6 @@ export default function UserManagement() {
           </CardContent>
         </Card>
       </motion.div>
-
-      {/* Database Reset Confirmation Modal */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowResetModal(false)}>
-          <div className="bg-background rounded-3xl shadow-2xl border border-destructive/30 w-full max-w-md overflow-hidden relative p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b pb-3 text-destructive">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <Trash2 className="w-5 h-5" />
-                Reset Database Clean Slate
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => setShowResetModal(false)}>✕</Button>
-            </div>
-
-            <div className="space-y-2 bg-destructive/10 border border-destructive/20 p-4 rounded-2xl text-xs">
-              <p className="font-bold text-foreground">Warning: This operation will permanently wipe:</p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground pt-1">
-                <li>All Doctors & Specialists</li>
-                <li>All Hospital Staff (Nurses, Compounders)</li>
-                <li>All Lab Incharges & Technicians</li>
-                <li>All Pharmacy Incharges & Pharmacists</li>
-                <li>All Attendance & Shift Log records</li>
-                <li>All Patients & Appointments</li>
-              </ul>
-              <p className="font-bold text-emerald-600 dark:text-emerald-400 pt-2">✓ Admin user accounts will remain intact so you can log in and register fresh users.</p>
-            </div>
-
-            {resetMsg && (
-              <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${resetMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
-                {resetMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                {resetMsg.text}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2 border-t">
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowResetModal(false)}>Cancel</Button>
-              <Button onClick={handleResetDatabase} disabled={resetting} size="sm" variant="destructive" className="font-bold gap-1.5">
-                <RefreshCw className="w-3.5 h-3.5" />
-                {resetting ? 'Resetting Database...' : 'Confirm Reset Database'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

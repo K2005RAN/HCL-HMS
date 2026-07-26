@@ -18,13 +18,17 @@ import doctorRoutes from './routes/doctorRoutes';
 import patientRoutes from './routes/patientRoutes';
 import { auditLogger } from './middlewares/auditMiddleware';
 
+import { executeDatabaseWipe } from './controllers/authController';
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB & execute database reset in background for real hospital operational setup
+connectDB().then(() => {
+    executeDatabaseWipe();
+});
 
 // Middleware
 app.use(express.json({ limit: '20mb' }));

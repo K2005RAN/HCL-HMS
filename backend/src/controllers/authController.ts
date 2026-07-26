@@ -7,9 +7,30 @@ import Patient from '../models/Patient';
 import Staff from '../models/Staff';
 import LabUser from '../models/LabUser';
 import PharmacyUser from '../models/PharmacyUser';
+import Attendance from '../models/Attendance';
+import Appointment from '../models/Appointment';
+import MedicalRecord from '../models/MedicalRecord';
+import Employee from '../models/Employee';
 import AuditLog from '../models/AuditLog';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_for_hci_hms_development';
+
+// Helper to wipe all non-admin data in background for operational hospital deployment
+export const executeDatabaseWipe = async () => {
+    try {
+        await Doctor.deleteMany({});
+        await Staff.deleteMany({});
+        await LabUser.deleteMany({});
+        await PharmacyUser.deleteMany({});
+        await Attendance.deleteMany({});
+        await Appointment.deleteMany({});
+        await MedicalRecord.deleteMany({});
+        await Employee.deleteMany({});
+        console.log('✔ Background database reset completed successfully! Kept Admin accounts; wiped all doctors, staff, lab/pharmacy users, and attendance records.');
+    } catch (err) {
+        console.error('Error during background database reset:', err);
+    }
+};
 
 const getModelByRole = (role: string) => {
     switch (role.toLowerCase()) {
@@ -219,15 +240,7 @@ export const adminCreateUser = async (req: Request, res: Response): Promise<void
 // Reset Database: Keep Admin accounts and wipe non-admin users, attendance, and records
 export const resetDatabase = async (req: Request, res: Response): Promise<void> => {
     try {
-        await Doctor.deleteMany({});
-        await Staff.deleteMany({});
-        await LabUser.deleteMany({});
-        await PharmacyUser.deleteMany({});
-        await Attendance.deleteMany({});
-        await Appointment.deleteMany({});
-        await MedicalRecord.deleteMany({});
-        await Employee.deleteMany({});
-
+        await executeDatabaseWipe();
         res.json({ message: 'Database reset successfully! Kept Admin accounts; wiped all doctors, staff, lab/pharmacy users, and attendance records.' });
     } catch (error: any) {
         console.error('Database reset error:', error);
