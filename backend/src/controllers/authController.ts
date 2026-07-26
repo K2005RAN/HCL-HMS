@@ -15,21 +15,9 @@ import AuditLog from '../models/AuditLog';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_for_hci_hms_development';
 
-// Helper to wipe all non-admin data in background for operational hospital deployment
+// Helper function (database wiping disabled to prevent accidental data loss)
 export const executeDatabaseWipe = async () => {
-    try {
-        await Doctor.deleteMany({});
-        await Staff.deleteMany({});
-        await LabUser.deleteMany({});
-        await PharmacyUser.deleteMany({});
-        await Attendance.deleteMany({});
-        await Appointment.deleteMany({});
-        await MedicalRecord.deleteMany({});
-        await Employee.deleteMany({});
-        console.log('✔ Background database reset completed successfully! Kept Admin accounts; wiped all doctors, staff, lab/pharmacy users, and attendance records.');
-    } catch (err) {
-        console.error('Error during background database reset:', err);
-    }
+    console.log('Database wipe functionality is disabled to preserve user records.');
 };
 
 const getModelByRole = (role: string) => {

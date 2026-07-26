@@ -24,7 +24,7 @@ const cleanDoctorName = (name: string) => {
     return `Dr. ${stripped}`;
 };
 
-// Auto-close any unclosed shifts from previous days & cleanup duplicate doctor staff entries
+// Auto-close any unclosed shifts from previous days
 const autoCloseUnsignedShifts = async () => {
     try {
         const { start } = getTodayRange();
@@ -39,20 +39,6 @@ const autoCloseUnsignedShifts = async () => {
             record.clockOut = shiftEnd;
             record.status = 'Signed Off';
             await record.save();
-        }
-
-        // Clean up duplicate STF- entries for Doctors (if a DOC- entry exists for same doctor & date)
-        const doctorList = await Doctor.find();
-        for (const doc of doctorList) {
-            const docNameClean = doc.name.replace(/^(Dr\.\s*)+/i, '').trim();
-            const matchingStaff = await Staff.find({
-                name: new RegExp(docNameClean, 'i')
-            });
-            for (const s of matchingStaff) {
-                await Staff.deleteOne({ _id: s._id });
-                const stfId = s.staffId || `STF-${s._id.toString().slice(-4)}`;
-                await Attendance.deleteMany({ staffId: stfId });
-            }
         }
     } catch (err) {
         console.error('Error in autoCloseUnsignedShifts:', err);

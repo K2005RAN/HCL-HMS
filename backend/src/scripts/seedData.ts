@@ -19,15 +19,8 @@ const seedData = async () => {
         await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/hci-hms');
         console.log('Connected to MongoDB');
 
-        // Clear existing data (except auth)
-        await Appointment.deleteMany({});
-        await Medicine.deleteMany({});
-        await LabTest.deleteMany({});
-        await MedicalRecord.deleteMany({});
-        await Invoice.deleteMany({});
-        await Employee.deleteMany({});
-        await Attendance.deleteMany({});
-        await AuditLog.deleteMany({});
+        // Preserving existing data
+        console.log('Seeding demo data without clearing existing collections...');
 
         const doctor = await Doctor.findOne();
         const patient = await Patient.findOne();

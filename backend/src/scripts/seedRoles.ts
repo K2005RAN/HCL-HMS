@@ -13,19 +13,8 @@ const seedRoles = async () => {
         await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/hci-hms');
         console.log('Connected to MongoDB');
 
-        // Drop existing collections (optional, be careful in prod)
-        try {
-            await mongoose.connection.db.dropCollection('users');
-            await mongoose.connection.db.dropCollection('roles');
-            console.log('Dropped old users and roles collections');
-        } catch (e) {
-            console.log('No old collections to drop');
-        }
-        
-        await Admin.deleteMany({});
-        await Doctor.deleteMany({});
-        await Patient.deleteMany({});
-        await Staff.deleteMany({});
+        // Preserving existing collections
+        console.log('Seeding roles without wiping existing data...');
 
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash('password123', salt);
