@@ -209,19 +209,32 @@ export const signOff = async (req: Request, res: Response): Promise<void> => {
 };
 
 // @route   GET /api/attendance/admin-logs
-// @desc    Get all attendance logs for Admin view (filterable by date/search)
+// @desc    Get all attendance logs for Admin view (filterable by month, date, staffId, search)
 export const getAdminAttendanceLogs = async (req: Request, res: Response): Promise<void> => {
     try {
-        const dateStr = req.query.date as string;
+        const monthStr = req.query.month as string;       // e.g. '2026-07'
+        const dateStr = req.query.date as string;         // e.g. '2026-07-26'
+        const staffIdFilter = req.query.staffId as string; // e.g. 'STF-0001'
         const search = (req.query.search as string || '').trim();
 
         const query: any = {};
 
+        // Staff ID filter
+        if (staffIdFilter && staffIdFilter !== 'all') {
+            query.staffId = staffIdFilter;
+        }
+
+        // Date / Month filter
         if (dateStr && dateStr !== 'all') {
             const start = new Date(dateStr);
             start.setHours(0, 0, 0, 0);
             const end = new Date(dateStr);
             end.setHours(23, 59, 59, 999);
+            query.date = { $gte: start, $lte: end };
+        } else if (monthStr && monthStr !== 'all') {
+            const [year, month] = monthStr.split('-').map(Number);
+            const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+            const end = new Date(year, month, 0, 23, 59, 59, 999);
             query.date = { $gte: start, $lte: end };
         }
 
@@ -235,25 +248,44 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
             ];
         }
 
-        const records = await Attendance.find(query).sort({ clockIn: -1, createdAt: -1 });
+        const records = await Attendance.find(query).sort({ date: -1, clockIn: -1 });
 
-        // Calculate today's stats and overall DB stats
-        const { start, end } = getTodayRange();
-        const todayRecords = await Attendance.find({ date: { $gte: start, $lte: end } });
-        
-        const totalStaffCount = (await Staff.countDocuments()) + (await Employee.countDocuments()) + (await Doctor.countDocuments());
+        // Calculate Stats for Filter Selection
+        const totalRecords = records.length;
+        const presentCount = records.filter(r => r.status === 'Present').length;
+        const signedOffCount = records.filter(r => r.status === 'Signed Off').length;
+        const markedDaysCount = presentCount + signedOffCount;
+
+        // Calculate days in month / period
+        let daysInPeriod = 30;
+        if (monthStr && monthStr !== 'all') {
+            const [y, m] = monthStr.split('-').map(Number);
+            daysInPeriod = new Date(y, m, 0).getDate();
+        } else {
+            daysInPeriod = new Date().getDate(); // Days passed so far this month
+        }
+
+        const absentCount = Math.max(0, daysInPeriod - markedDaysCount);
+        const attendancePercentage = daysInPeriod > 0
+            ? ((markedDaysCount / daysInPeriod) * 100).toFixed(1)
+            : '0.0';
+
+        // Overall DB stats
         const totalDbRecords = await Attendance.countDocuments();
-        const presentCount = todayRecords.filter(r => r.status === 'Present').length;
-        const signedOffCount = todayRecords.filter(r => r.status === 'Signed Off').length;
+        const totalStaffCount = (await Staff.countDocuments()) + (await Employee.countDocuments()) + (await Doctor.countDocuments());
 
         res.json({
             records,
             stats: {
-                totalCount: records.length,
+                totalCount: totalRecords,
                 totalDbRecords,
                 totalStaffCount,
                 presentCount,
-                signedOffCount
+                signedOffCount,
+                markedDaysCount,
+                absentCount,
+                daysInPeriod,
+                attendancePercentage
             }
         });
     } catch (error: any) {

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Clock, CheckCircle, XCircle, Search, Calendar, UserPlus, LogOut, UserCheck, AlertCircle, ShieldCheck, Trash2, KeyRound, Lock } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Search, Calendar, UserPlus, LogOut, UserCheck, AlertCircle, ShieldCheck, Trash2, KeyRound, Filter, CalendarRange, Percent, BarChart3, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import axios from 'axios';
@@ -23,10 +23,22 @@ export default function AttendanceDashboard() {
   const [attendanceMsg, setAttendanceMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Admin Logs State
+  // Admin History & Monthly Filter State
   const [logs, setLogs] = useState<any[]>([]);
-  const [stats, setStats] = useState({ totalCount: 0, totalDbRecords: 0, totalStaffCount: 0, presentCount: 0, signedOffCount: 0 });
+  const [stats, setStats] = useState<any>({
+    totalCount: 0,
+    totalDbRecords: 0,
+    totalStaffCount: 0,
+    presentCount: 0,
+    signedOffCount: 0,
+    markedDaysCount: 0,
+    absentCount: 0,
+    daysInPeriod: 30,
+    attendancePercentage: '0.0'
+  });
   const [logsLoading, setLogsLoading] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // e.g. '2026-07'
   const [logFilterDate, setLogFilterDate] = useState('');
   const [logSearchQuery, setLogSearchQuery] = useState('');
 
@@ -67,16 +79,17 @@ export default function AttendanceDashboard() {
     }
   };
 
-  // Fetch admin logs
+  // Fetch admin logs with month & staff filter
   const fetchAdminLogs = async () => {
     if (!token) return;
     setLogsLoading(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/attendance/admin-logs?date=${logFilterDate}&search=${logSearchQuery}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(
+        `${API_BASE_URL}/api/attendance/admin-logs?month=${selectedMonth}&date=${logFilterDate}&staffId=${selectedStaffId}&search=${logSearchQuery}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setLogs(res.data.records || []);
-      setStats(res.data.stats || { totalCount: 0, totalDbRecords: 0, totalStaffCount: 0, presentCount: 0, signedOffCount: 0 });
+      setStats(res.data.stats || {});
     } catch (err) {
       console.error('Failed to fetch admin logs:', err);
     } finally {
@@ -90,7 +103,7 @@ export default function AttendanceDashboard() {
 
   useEffect(() => {
     fetchAdminLogs();
-  }, [token, logFilterDate, logSearchQuery]);
+  }, [token, selectedMonth, logFilterDate, selectedStaffId, logSearchQuery]);
 
   // Give Attendance (Clock In)
   const handleGiveAttendance = async (staffMember: any) => {
@@ -192,10 +205,19 @@ export default function AttendanceDashboard() {
     }
   };
 
+  const handleResetFilters = () => {
+    setSelectedStaffId('all');
+    setSelectedMonth(new Date().toISOString().slice(0, 7));
+    setLogFilterDate('');
+    setLogSearchQuery('');
+  };
+
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return '--:--';
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   };
+
+  const selectedStaffObj = searchResults.find(s => s.staffId === selectedStaffId);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -214,7 +236,7 @@ export default function AttendanceDashboard() {
           <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
             Hospital Staff & Attendance
           </h2>
-          <p className="text-muted-foreground mt-1 text-lg">Give daily attendance, sign off shifts, and manage hospital staff records.</p>
+          <p className="text-muted-foreground mt-1 text-lg">Give daily attendance, sign off shifts, and track detailed monthly staff attendance reports.</p>
         </motion.div>
 
         {isAdmin && (
@@ -363,33 +385,35 @@ export default function AttendanceDashboard() {
         </Card>
       </motion.div>
 
-      {/* Admin Summary Stats */}
+      {/* Admin Monthly Attendance Analytics Summary Cards */}
       {isAdmin && (
         <div className="grid gap-6 md:grid-cols-4">
           <motion.div variants={itemVariants}>
-            <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-semibold">Total DB Attendance Logs</CardTitle>
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <Clock className="h-4 w-4 text-primary" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-extrabold">{stats.totalDbRecords || logs.length}</div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div variants={itemVariants}>
             <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-emerald-500/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">Present (Active Shift)</CardTitle>
+                <CardTitle className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">Days Present / Marked</CardTitle>
                 <div className="p-2 rounded-xl bg-emerald-500/10">
                   <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-500">{stats.presentCount || 0}</div>
+                <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-500">{stats.markedDaysCount || 0} Days</div>
+                <p className="text-[11px] text-muted-foreground mt-1">Out of {stats.daysInPeriod || 30} days in selected period</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-rose-500/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-semibold text-rose-600 dark:text-rose-500">Days Absent / Not Marked</CardTitle>
+                <div className="p-2 rounded-xl bg-rose-500/10">
+                  <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-500" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-extrabold text-rose-600 dark:text-rose-500">{stats.absentCount || 0} Days</div>
+                <p className="text-[11px] text-muted-foreground mt-1">Unmarked shift days</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -397,13 +421,14 @@ export default function AttendanceDashboard() {
           <motion.div variants={itemVariants}>
             <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-indigo-500/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Signed Off Today</CardTitle>
+                <CardTitle className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Monthly Attendance Rate</CardTitle>
                 <div className="p-2 rounded-xl bg-indigo-500/10">
-                  <LogOut className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  <Percent className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{stats.signedOffCount || 0}</div>
+                <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{stats.attendancePercentage || '0.0'}%</div>
+                <p className="text-[11px] text-muted-foreground mt-1">Overall percentage record</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -411,65 +436,132 @@ export default function AttendanceDashboard() {
           <motion.div variants={itemVariants}>
             <Card className="glass relative overflow-hidden group hover:shadow-2xl transition-all border-slate-500/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-semibold text-slate-500">Registered Staff in DB</CardTitle>
+                <CardTitle className="text-sm font-semibold text-slate-500">Total Filtered Logs</CardTitle>
                 <div className="p-2 rounded-xl bg-slate-500/10">
-                  <ShieldCheck className="h-4 w-4 text-slate-500" />
+                  <BarChart3 className="h-4 w-4 text-slate-500" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold text-slate-700 dark:text-slate-300">{stats.totalStaffCount || 0}</div>
+                <div className="text-3xl font-extrabold text-slate-700 dark:text-slate-300">{stats.totalCount || 0}</div>
+                <p className="text-[11px] text-muted-foreground mt-1">Matching history records</p>
               </CardContent>
             </Card>
           </motion.div>
         </div>
       )}
 
-      {/* Admin Attendance Database Records Table */}
+      {/* Admin Attendance History & Monthly Report Table */}
       {isAdmin && (
         <motion.div variants={itemVariants}>
           <Card className="glass border-border/50 shadow-xl overflow-hidden">
-            <CardHeader className="border-b border-border/50 bg-muted/20 pb-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <CardHeader className="border-b border-border/50 bg-muted/20 pb-4 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-xl">Database Attendance Log History</CardTitle>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <CalendarRange className="w-5 h-5 text-primary" />
+                    Staff Monthly & Daily Attendance History
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Select a staff member and month to view their complete attendance breakdown, present/absent days, and log history.
+                  </CardDescription>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={logFilterDate}
-                      onChange={(e) => setLogFilterDate(e.target.value)}
-                      className="h-9 w-36 text-xs bg-background/50"
-                    />
-                    {logFilterDate && (
-                      <Button size="sm" variant="ghost" onClick={() => setLogFilterDate('')} className="h-9 text-xs px-2 text-primary font-bold">
-                        All Dates
-                      </Button>
-                    )}
-                  </div>
+                {/* Reset Filters Button */}
+                <Button size="sm" variant="outline" onClick={handleResetFilters} className="gap-1.5 text-xs font-bold w-fit">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Reset Filters
+                </Button>
+              </div>
 
-                  <div className="relative flex-1 sm:w-60">
+              {/* Comprehensive Filter Controls */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                {/* 1. Staff Selector */}
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-bold text-muted-foreground">Select Staff Member</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm font-semibold"
+                    value={selectedStaffId}
+                    onChange={(e) => setSelectedStaffId(e.target.value)}
+                  >
+                    <option value="all">All Hospital Staff Members</option>
+                    {searchResults.map((s) => (
+                      <option key={s.staffId} value={s.staffId}>
+                        {s.staffId} - {s.name} ({s.department})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Month Selector */}
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-bold text-muted-foreground">Filter by Month</Label>
+                  <Input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="h-9 text-xs bg-background/50 font-semibold"
+                  />
+                </div>
+
+                {/* 3. Specific Day Selector */}
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-bold text-muted-foreground">Filter by Specific Day</Label>
+                  <Input
+                    type="date"
+                    value={logFilterDate}
+                    onChange={(e) => setLogFilterDate(e.target.value)}
+                    className="h-9 text-xs bg-background/50 font-semibold"
+                  />
+                </div>
+
+                {/* 4. Text Search Input */}
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-bold text-muted-foreground">Search Logs</Label>
+                  <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
-                      placeholder="Filter by Staff ID, Name..."
+                      placeholder="Filter by keyword..."
                       value={logSearchQuery}
                       onChange={(e) => setLogSearchQuery(e.target.value)}
-                      className="pl-8 h-9 text-xs bg-background/50"
+                      className="pl-8 h-9 text-xs bg-background/50 font-semibold"
                     />
                   </div>
                 </div>
               </div>
+
+              {/* Active Filter Summary Bar */}
+              {selectedStaffId !== 'all' && (
+                <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-primary text-primary-foreground font-mono">{selectedStaffId}</Badge>
+                    <span className="font-bold text-foreground">
+                      {selectedStaffObj ? selectedStaffObj.name : 'Selected Staff'}
+                    </span>
+                    <span className="text-muted-foreground">• {selectedMonth ? `Month: ${selectedMonth}` : 'All Months'}</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 font-semibold">
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      ✓ {stats.markedDaysCount || 0} Present Days
+                    </span>
+                    <span className="text-rose-600 dark:text-rose-400">
+                      ✕ {stats.absentCount || 0} Absent Days
+                    </span>
+                    <Badge variant="outline" className="bg-background text-primary border-primary/30 font-bold">
+                      {stats.attendancePercentage || '0.0'}% Rate
+                    </Badge>
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead className="text-foreground font-semibold py-3 text-xs">Date</TableHead>
                     <TableHead className="text-foreground font-semibold py-3 text-xs">Staff ID</TableHead>
                     <TableHead className="text-foreground font-semibold py-3 text-xs">Staff Name</TableHead>
                     <TableHead className="text-foreground font-semibold py-3 text-xs">Department</TableHead>
-                    <TableHead className="text-foreground font-semibold py-3 text-xs">Date</TableHead>
                     <TableHead className="text-foreground font-semibold py-3 text-xs">Clock In (Time In)</TableHead>
                     <TableHead className="text-foreground font-semibold py-3 text-xs">Clock Out (Sign Off)</TableHead>
                     <TableHead className="text-foreground font-semibold py-3 text-xs">Status</TableHead>
@@ -479,7 +571,7 @@ export default function AttendanceDashboard() {
                   {logsLoading ? (
                     <TableRow>
                       <TableCell colSpan={7} className="h-32 text-center text-xs text-muted-foreground">
-                        Loading database attendance records...
+                        Loading staff monthly attendance history...
                       </TableCell>
                     </TableRow>
                   ) : logs.length > 0 ? (
@@ -491,12 +583,12 @@ export default function AttendanceDashboard() {
                         transition={{ delay: i * 0.03 }}
                         className="border-border/50 hover:bg-muted/40 transition-colors text-xs"
                       >
+                        <TableCell className="font-semibold text-foreground py-3">
+                          {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </TableCell>
                         <TableCell className="font-mono font-bold text-primary py-3">{record.staffId}</TableCell>
                         <TableCell className="font-bold text-foreground py-3">{record.staffName}</TableCell>
                         <TableCell className="text-muted-foreground py-3">{record.department}</TableCell>
-                        <TableCell className="text-muted-foreground py-3">
-                          {new Date(record.date).toLocaleDateString()}
-                        </TableCell>
                         <TableCell className="font-medium text-foreground py-3">
                           {formatTime(record.clockIn)}
                         </TableCell>
@@ -517,7 +609,7 @@ export default function AttendanceDashboard() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="h-32 text-center text-xs text-muted-foreground">
-                        No attendance logs found in database for the selected criteria.
+                        No attendance history records found matching the selected staff, month, or date filters.
                       </TableCell>
                     </TableRow>
                   )}
