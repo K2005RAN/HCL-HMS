@@ -16,10 +16,13 @@ const getTodayRange = () => {
 };
 
 // @route   GET /api/attendance/search-staff
-// @desc    Get all staff members (or search by query) with today's attendance status
+// @desc    Get staff members with today's attendance status (Admins get all; Doctor/Lab/Pharmacy get ONLY their own record)
 export const searchStaff = async (req: Request, res: Response): Promise<void> => {
     try {
         const queryStr = (req.query.query as string || '').trim();
+        const currentUser = (req as any).user;
+        const userRole = (currentUser?.role || '').toLowerCase();
+        const isAdmin = ['admin', 'super admin', 'hr'].includes(userRole);
 
         let staffMembers: any[] = [];
         let employees: any[] = [];
@@ -66,7 +69,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             attendanceMap.set(log.staffId, log);
         });
 
-        const results: any[] = [];
+        let results: any[] = [];
 
         staffMembers.forEach(s => {
             const sId = s.staffId || `STF-${s._id.toString().slice(-4)}`;
@@ -75,6 +78,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 _id: s._id,
                 staffId: sId,
                 name: s.name,
+                email: s.email,
                 department: s.department || 'Staff',
                 role: 'Staff',
                 phone: (s as any).phone || 'N/A',
@@ -91,6 +95,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 _id: e._id,
                 staffId: eId,
                 name: e.name,
+                email: e.email,
                 department: e.department || 'General',
                 role: e.designation || 'Employee',
                 phone: e.phone || 'N/A',
@@ -107,6 +112,7 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 _id: d._id,
                 staffId: dId,
                 name: `Dr. ${d.name}`,
+                email: d.email,
                 department: d.department || 'Doctor',
                 role: 'Doctor',
                 phone: d.phone || 'N/A',
@@ -115,6 +121,38 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 clockOut: todayLog ? todayLog.clockOut : null
             });
         });
+
+        // Strict Role Scoping: Non-Admins ONLY get their own attendance profile record!
+        if (!isAdmin && currentUser) {
+            const currentUserId = (currentUser.id || currentUser._id || '').toString();
+            const currentEmail = (currentUser.email || '').toLowerCase();
+            const currentName = (currentUser.name || currentUser.username || '').toLowerCase();
+
+            results = results.filter(r => {
+                const rId = (r._id || '').toString();
+                const rEmail = (r.email || '').toLowerCase();
+                const rName = (r.name || '').toLowerCase();
+                return rId === currentUserId || (currentEmail && rEmail === currentEmail) || rName.includes(currentName);
+            });
+
+            // Fallback: If non-admin user is not found in staff collections yet, build self profile entry
+            if (results.length === 0) {
+                const fallbackId = currentUser.staffId || currentUser.doctorId || currentUser.employeeId || `STF-${currentUserId.slice(-4)}`;
+                const todayLog = attendanceMap.get(fallbackId);
+                results.push({
+                    _id: currentUserId,
+                    staffId: fallbackId,
+                    name: currentUser.name || currentUser.username || 'Staff User',
+                    email: currentUser.email || 'N/A',
+                    department: currentUser.department || userRole.toUpperCase(),
+                    role: userRole.toUpperCase(),
+                    phone: currentUser.phone || 'N/A',
+                    todayStatus: todayLog ? todayLog.status : 'Not Marked',
+                    clockIn: todayLog ? todayLog.clockIn : null,
+                    clockOut: todayLog ? todayLog.clockOut : null
+                });
+            }
+        }
 
         res.json(results);
     } catch (error: any) {
@@ -209,7 +247,7 @@ export const signOff = async (req: Request, res: Response): Promise<void> => {
 };
 
 // @route   GET /api/attendance/admin-logs
-// @desc    Get all attendance logs for Admin view (filterable by month, date, staffId, search)
+// @desc    Get attendance logs (Admins get all; Doctor/Lab/Pharmacy get ONLY their own history)
 export const getAdminAttendanceLogs = async (req: Request, res: Response): Promise<void> => {
     try {
         const monthStr = req.query.month as string;       // e.g. '2026-07'
@@ -217,10 +255,39 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
         const staffIdFilter = req.query.staffId as string; // e.g. 'STF-0001'
         const search = (req.query.search as string || '').trim();
 
+        const currentUser = (req as any).user;
+        const userRole = (currentUser?.role || '').toLowerCase();
+        const isAdmin = ['admin', 'super admin', 'hr'].includes(userRole);
+
         const query: any = {};
 
-        // Staff ID filter
-        if (staffIdFilter && staffIdFilter !== 'all') {
+        // Non-Admins ONLY get their own attendance history records!
+        if (!isAdmin && currentUser) {
+            const currentUserId = (currentUser.id || currentUser._id || '').toString();
+            const currentEmail = (currentUser.email || '').toLowerCase();
+            
+            // Find staff object for this user
+            let foundStaff: any = await Staff.findById(currentUserId) 
+                || await Doctor.findById(currentUserId) 
+                || await Employee.findById(currentUserId);
+
+            if (!foundStaff && currentEmail) {
+                foundStaff = await Staff.findOne({ email: currentEmail }) 
+                    || await Doctor.findOne({ email: currentEmail }) 
+                    || await Employee.findOne({ email: currentEmail });
+            }
+
+            const myStaffId = foundStaff?.staffId || foundStaff?.doctorId || foundStaff?.employeeId || currentUser.staffId || currentUser.doctorId;
+            
+            if (myStaffId) {
+                query.staffId = myStaffId;
+            } else {
+                query.$or = [
+                    { staffId: `STF-${currentUserId.slice(-4)}` },
+                    { staffName: new RegExp(currentUser.name || currentUser.username || '', 'i') }
+                ];
+            }
+        } else if (staffIdFilter && staffIdFilter !== 'all') {
             query.staffId = staffIdFilter;
         }
 
@@ -238,7 +305,7 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
             query.date = { $gte: start, $lte: end };
         }
 
-        if (search) {
+        if (search && isAdmin) {
             const regex = new RegExp(search, 'i');
             query.$or = [
                 { staffId: regex },
