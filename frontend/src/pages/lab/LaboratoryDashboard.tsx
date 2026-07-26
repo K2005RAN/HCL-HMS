@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TestTube, FileUp, CheckCircle, Search, User, Stethoscope, Phone, X, FileCheck, FileText, Download } from 'lucide-react';
+import { TestTube, FileUp, CheckCircle, Search, User, Stethoscope, Phone, X, FileCheck, FileText, Download, Activity } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL } from '@/config/api';
 
 export default function LaboratoryDashboard() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const [tests, setTests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +117,11 @@ export default function LaboratoryDashboard() {
             Laboratory Dashboard
           </h2>
           <p className="text-muted-foreground mt-1 text-lg">Manage patient test requests, sample collections, and upload clinical reports.</p>
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <Button onClick={() => navigate('/attendance')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md">
+            <Activity className="w-4 h-4" /> Mark Attendance / Sign Off
+          </Button>
         </motion.div>
       </div>
 

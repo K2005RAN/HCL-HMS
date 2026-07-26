@@ -41,7 +41,7 @@ function App() {
                 <Route path="employees" element={<EmployeeList />} />
               </Route>
               
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'staff']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'staff', 'doctor', 'pharmacy', 'lab']} />}>
                 <Route path="attendance" element={<AttendanceDashboard />} />
               </Route>
               

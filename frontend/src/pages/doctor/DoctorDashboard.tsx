@@ -114,17 +114,27 @@ export default function DoctorDashboard() {
           <p className="text-muted-foreground mt-1 text-lg">Welcome back, Dr. {dashboardData.doctor?.name || user?.username || 'User'}.</p>
         </motion.div>
         
-        {dashboardData.doctor && (
-          <motion.div variants={itemVariants} className="bg-card border border-border/50 p-4 rounded-2xl shadow-sm flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
-              {dashboardData.doctor.name.charAt(0)}
-            </div>
-            <div>
-              <p className="font-bold">{dashboardData.doctor.specialization}</p>
-              <p className="text-sm text-muted-foreground">{dashboardData.doctor.department} Department • {dashboardData.doctor.phone}</p>
-            </div>
-          </motion.div>
-        )}
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => navigate('/attendance')}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md text-xs sm:text-sm"
+          >
+            <Activity className="w-4 h-4" />
+            Mark Attendance / Sign Off
+          </Button>
+
+          {dashboardData.doctor && (
+            <motion.div variants={itemVariants} className="bg-card border border-border/50 p-4 rounded-2xl shadow-sm flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+                {dashboardData.doctor.name.charAt(0)}
+              </div>
+              <div>
+                <p className="font-bold">{dashboardData.doctor.specialization}</p>
+                <p className="text-sm text-muted-foreground">{dashboardData.doctor.department} Department • {dashboardData.doctor.phone}</p>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

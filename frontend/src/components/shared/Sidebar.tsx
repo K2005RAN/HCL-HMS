@@ -24,7 +24,7 @@ const navItems = [
   { name: 'Doctor Portal', href: '/doctor-dashboard', icon: Stethoscope, roles: ['admin', 'doctor'] },
   { name: 'Patient History', href: '/doctor-history', icon: History, roles: ['admin', 'doctor'] },
   { name: 'Employees', href: '/employees', icon: Users, roles: ['admin'] },
-  { name: 'Attendance', href: '/attendance', icon: Activity, roles: ['admin', 'staff'] },
+  { name: 'Attendance', href: '/attendance', icon: Activity, roles: ['admin', 'staff', 'doctor', 'pharmacy', 'lab'] },
   { name: 'Pharmacy', href: '/pharmacy', icon: Pill, roles: ['admin', 'pharmacy'] },
   { name: 'Laboratory', href: '/lab', icon: TestTube, roles: ['admin', 'lab'] },
   { name: 'Billing', href: '/billing', icon: IndianRupee, roles: ['admin'] },

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -6,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Pill, AlertTriangle, Clock, Search, Plus, X, CheckCircle, FileText, IndianRupee, User, Stethoscope } from 'lucide-react';
+import { Pill, AlertTriangle, Clock, Search, Plus, X, CheckCircle, FileText, IndianRupee, User, Stethoscope, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL } from '@/config/api';
 
 export default function PharmacyDashboard() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   
   // Data state
@@ -141,6 +143,9 @@ export default function PharmacyDashboard() {
           <p className="text-muted-foreground mt-1 text-lg">Manage prescribed medicines, dispensing queue, and inventory.</p>
         </motion.div>
         <motion.div variants={itemVariants} className="flex gap-3">
+          <Button onClick={() => navigate('/attendance')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md">
+            <Activity className="w-4 h-4" /> Mark Attendance / Sign Off
+          </Button>
           <Button onClick={() => setShowAddModal(true)} className="bg-primary shadow-md hover:scale-105 transition-transform">
             <Plus className="mr-2 h-4 w-4" /> Add Medicine
           </Button>
