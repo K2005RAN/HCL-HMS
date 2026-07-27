@@ -9,6 +9,14 @@ export interface IAppointment extends Document {
     status: string; // Pending, Confirmed, Completed, Cancelled
     queueNumber?: number;
     reasonForVisit: string;
+    vitals?: {
+        bp?: string;
+        pulse?: string;
+        weight?: string;
+        temp?: string;
+        height?: string;
+        bmi?: string;
+    };
 }
 
 const AppointmentSchema: Schema = new Schema({
@@ -19,7 +27,15 @@ const AppointmentSchema: Schema = new Schema({
     type: { type: String, default: 'Scheduled' },
     status: { type: String, default: 'Pending' },
     queueNumber: { type: Number },
-    reasonForVisit: { type: String }
+    reasonForVisit: { type: String },
+    vitals: {
+        bp: { type: String, default: '' },
+        pulse: { type: String, default: '' },
+        weight: { type: String, default: '' },
+        temp: { type: String, default: '' },
+        height: { type: String, default: '' },
+        bmi: { type: String, default: '' }
+    }
 }, {
     timestamps: true
 });

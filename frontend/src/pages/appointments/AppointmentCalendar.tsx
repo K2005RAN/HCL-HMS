@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar as CalendarIcon, Clock, User, Plus, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, Plus, X, HeartPulse, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +15,11 @@ export default function AppointmentCalendar() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   
+  // Vitals record modal state for existing appointments
+  const [vitalsModalAppt, setVitalsModalAppt] = useState<any>(null);
+  const [vitalsModalData, setVitalsModalData] = useState({ bp: '', pulse: '', weight: '', temp: '' });
+  const [savingVitals, setSavingVitals] = useState(false);
+
   const [doctors, setDoctors] = useState<any[]>([]);
   const [searchPhone, setSearchPhone] = useState('');
   const [patientFound, setPatientFound] = useState<any>(null);
@@ -40,7 +45,8 @@ export default function AppointmentCalendar() {
     appointmentDate: new Date().toISOString().split('T')[0],
     appointmentTime: '10:00',
     type: 'Walk-in',
-    reasonForVisit: ''
+    reasonForVisit: '',
+    vitals: { bp: '', pulse: '', weight: '', temp: '' }
   });
 
   const fetchData = async () => {
@@ -73,7 +79,7 @@ export default function AppointmentCalendar() {
 
   useEffect(() => {
     const searchPatient = async () => {
-      if (searchPhone.length >= 3) { // Reduced to 3 to allow searching by ID like EMP-123
+      if (searchPhone.length >= 3) {
         try {
           const res = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${searchPhone}`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -103,24 +109,64 @@ export default function AppointmentCalendar() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setShowAddModal(false);
-      fetchData(); // Refresh the list
+      // Reset form
+      setFormData({
+        patientId: '',
+        doctorId: doctors[0]?._id || '',
+        appointmentDate: new Date().toISOString().split('T')[0],
+        appointmentTime: '10:00',
+        type: 'Walk-in',
+        reasonForVisit: '',
+        vitals: { bp: '', pulse: '', weight: '', temp: '' }
+      });
+      setSearchPhone('');
+      setPatientFound(null);
+      fetchData(); // Refresh list
     } catch (error: any) {
       console.error("Failed to add appointment", error.response?.data || error);
       alert("Error creating appointment: " + (error.response?.data?.message || error.message));
     }
   };
 
+  const handleOpenVitalsModal = (appt: any) => {
+    setVitalsModalAppt(appt);
+    setVitalsModalData({
+      bp: appt.vitals?.bp || '',
+      pulse: appt.vitals?.pulse || '',
+      weight: appt.vitals?.weight || '',
+      temp: appt.vitals?.temp || ''
+    });
+  };
+
+  const handleSaveVitalsModal = async () => {
+    if (!vitalsModalAppt) return;
+    setSavingVitals(true);
+    try {
+      await axios.put(`${API_BASE_URL}/api/appointments/${vitalsModalAppt._id}/vitals`, {
+        vitals: vitalsModalData
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVitalsModalAppt(null);
+      fetchData();
+    } catch (error: any) {
+      console.error("Failed to update vitals", error);
+      alert("Error updating vitals: " + (error.response?.data?.message || error.message));
+    } finally {
+      setSavingVitals(false);
+    }
+  };
+
   const handleQuickRegister = async () => {
     setRegistering(true);
     try {
-      // Calculate an approximate DOB from the provided age
       const approxDob = new Date();
       approxDob.setFullYear(approxDob.getFullYear() - parseInt(newPatientData.age || '0'));
       
       const payload = {
         role: 'patient',
         phone: searchPhone,
-        password: 'Password123!', // default temp password
+        password: 'Password123!',
         ...newPatientData,
         dob: approxDob.toISOString().split('T')[0],
         chronicDiseases: newPatientData.chronicDiseases ? newPatientData.chronicDiseases.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -156,9 +202,9 @@ export default function AppointmentCalendar() {
       <div className="flex items-center justify-between">
         <motion.div variants={itemVariants}>
           <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Appointments
+            Appointments & Nurse Triage
           </h2>
-          <p className="text-muted-foreground mt-1 text-lg">Manage daily appointments and queues.</p>
+          <p className="text-muted-foreground mt-1 text-lg">Manage daily appointments, queues, and nurse vitals check-in.</p>
         </motion.div>
         <motion.div variants={itemVariants}>
           <Button onClick={() => setShowAddModal(true)} className="shadow-lg shadow-primary/20 hover:scale-105 transition-transform bg-gradient-to-r from-primary to-indigo-600">
@@ -207,34 +253,66 @@ export default function AppointmentCalendar() {
                 {loading ? (
                   <div className="text-center py-16 text-muted-foreground animate-pulse font-medium">Loading appointments...</div>
                 ) : appointments.length > 0 ? (
-                  appointments.map((appt, i) => (
-                    <motion.div 
-                      key={appt._id} 
-                      whileHover={{ x: 4, backgroundColor: 'rgba(var(--primary), 0.03)' }}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-5 transition-colors gap-4"
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/20 border border-primary/20 flex items-center justify-center font-extrabold text-xl text-primary shadow-inner">
-                          {appt.queueNumber || i + 1}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-lg text-foreground">{appt.patientId?.name || 'Unknown Patient'}</h4>
-                          <div className="flex flex-wrap items-center text-sm text-muted-foreground mt-1.5 gap-2 sm:gap-4 font-medium">
-                            <span className="flex items-center bg-muted px-2.5 py-1 rounded-md"><Clock className="mr-1.5 h-3.5 w-3.5" /> {appt.appointmentTime}</span>
-                            <span className="flex items-center bg-muted px-2.5 py-1 rounded-md">{appt.type}</span>
-                            <span className="flex items-center bg-muted px-2.5 py-1 rounded-md text-primary">Dr. {appt.doctorId?.name}</span>
+                  appointments.map((appt, i) => {
+                    const hasVitals = appt.vitals && (appt.vitals.bp || appt.vitals.pulse || appt.vitals.temp || appt.vitals.weight);
+                    return (
+                      <motion.div 
+                        key={appt._id} 
+                        whileHover={{ x: 4, backgroundColor: 'rgba(var(--primary), 0.03)' }}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-5 transition-colors gap-4"
+                      >
+                        <div className="flex items-center gap-5">
+                          <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/20 border border-primary/20 flex items-center justify-center font-extrabold text-xl text-primary shadow-inner">
+                            {appt.queueNumber || i + 1}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-lg text-foreground">{appt.patientId?.name || 'Unknown Patient'}</h4>
+                              {hasVitals ? (
+                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-300 dark:border-emerald-800 text-xs flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Vitals Recorded
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-300 dark:border-amber-800 text-xs flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3 text-amber-600" /> Vitals Pending
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center text-sm text-muted-foreground mt-1.5 gap-2 sm:gap-4 font-medium">
+                              <span className="flex items-center bg-muted px-2.5 py-1 rounded-md"><Clock className="mr-1.5 h-3.5 w-3.5" /> {appt.appointmentTime}</span>
+                              <span className="flex items-center bg-muted px-2.5 py-1 rounded-md">{appt.type}</span>
+                              <span className="flex items-center bg-muted px-2.5 py-1 rounded-md text-primary">Dr. {appt.doctorId?.name}</span>
+                            </div>
+
+                            {hasVitals && (
+                              <div className="mt-2 text-xs text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-lg flex flex-wrap gap-3 items-center border border-border/40">
+                                <span><strong className="text-foreground">BP:</strong> {appt.vitals.bp || '--'}</span>
+                                <span><strong className="text-foreground">Pulse:</strong> {appt.vitals.pulse ? `${appt.vitals.pulse} bpm` : '--'}</span>
+                                <span><strong className="text-foreground">Weight:</strong> {appt.vitals.weight ? `${appt.vitals.weight} kg` : '--'}</span>
+                                <span><strong className="text-foreground">Temp:</strong> {appt.vitals.temp ? `${appt.vitals.temp} °F` : '--'}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <Badge variant="secondary" className="px-3 py-1 shadow-sm">
-                          {appt.status}
-                        </Badge>
-                        <Button variant="outline" size="sm" className="hover:bg-primary hover:text-primary-foreground shadow-sm transition-all">Details</Button>
-                      </div>
-                    </motion.div>
-                  ))
+                        
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleOpenVitalsModal(appt)}
+                            className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white border-emerald-300 dark:border-emerald-800 text-xs font-semibold shadow-sm transition-all"
+                          >
+                            <HeartPulse className="mr-1.5 h-3.5 w-3.5 text-emerald-600 hover:text-white" />
+                            {hasVitals ? 'Edit Vitals' : 'Record Vitals'}
+                          </Button>
+                          <Badge variant="secondary" className="px-3 py-1.5 shadow-sm">
+                            {appt.status}
+                          </Badge>
+                        </div>
+                      </motion.div>
+                    );
+                  })
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
                     <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
@@ -250,6 +328,91 @@ export default function AppointmentCalendar() {
         </motion.div>
       </div>
 
+      {/* Record Vitals Nurse Modal */}
+      <AnimatePresence>
+        {vitalsModalAppt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card text-card-foreground w-full max-w-md rounded-2xl border border-border/50 shadow-2xl overflow-hidden relative"
+            >
+              <div className="p-5 border-b border-border/50 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-600">
+                    <HeartPulse className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-foreground">Nurse Check-In: Patient Vitals</h3>
+                    <p className="text-xs text-muted-foreground">Patient: {vitalsModalAppt.patientId?.name || 'Patient'}</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setVitalsModalAppt(null)} className="rounded-full">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">BP (mmHg)</Label>
+                    <Input 
+                      placeholder="120/80" 
+                      value={vitalsModalData.bp} 
+                      onChange={e => setVitalsModalData({...vitalsModalData, bp: e.target.value})} 
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Pulse (bpm)</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="72" 
+                      value={vitalsModalData.pulse} 
+                      onChange={e => setVitalsModalData({...vitalsModalData, pulse: e.target.value})} 
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Weight (kg)</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="70" 
+                      value={vitalsModalData.weight} 
+                      onChange={e => setVitalsModalData({...vitalsModalData, weight: e.target.value})} 
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Temp (°F)</Label>
+                    <Input 
+                      type="number" 
+                      step="0.1" 
+                      placeholder="98.6" 
+                      value={vitalsModalData.temp} 
+                      onChange={e => setVitalsModalData({...vitalsModalData, temp: e.target.value})} 
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-border/50 bg-muted/20 flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setVitalsModalAppt(null)}>Cancel</Button>
+                <Button 
+                  onClick={handleSaveVitalsModal} 
+                  disabled={savingVitals}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5"
+                >
+                  {savingVitals ? 'Saving...' : 'Save Vitals'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Add Appointment Modal */}
       <AnimatePresence>
         {showAddModal && (
@@ -259,20 +422,20 @@ export default function AppointmentCalendar() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="bg-card text-card-foreground w-full max-w-xl rounded-2xl border border-border/50 shadow-2xl overflow-hidden relative"
+              className="bg-card text-card-foreground w-full max-w-xl rounded-2xl border border-border/50 shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col"
             >
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-indigo-500 to-purple-600" />
               <div className="flex items-center justify-between p-6 border-b border-border/50 bg-muted/10">
                 <div>
                   <h3 className="font-bold text-2xl tracking-tight text-foreground">Create Appointment</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Schedule a new visit for a patient.</p>
+                  <p className="text-sm text-muted-foreground mt-1">Schedule visit & record triage vitals.</p>
                 </div>
                 <Button type="button" variant="ghost" size="icon" onClick={() => setShowAddModal(false)} className="rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors">
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              <form onSubmit={handleAddSubmit} className="flex flex-col max-h-[75vh]">
-                <div className="p-6 space-y-6 overflow-y-auto">
+              <form onSubmit={handleAddSubmit} className="flex flex-col flex-1 overflow-hidden">
+                <div className="p-6 space-y-6 overflow-y-auto flex-1">
                 
                 {/* Patient Search Section */}
                 <div className="bg-muted/20 p-4 rounded-xl border border-border/50">
@@ -412,6 +575,56 @@ export default function AppointmentCalendar() {
                     <Label className="text-sm font-semibold text-foreground">Reason For Visit / Current Issue</Label>
                     <Input required placeholder="Briefly describe the current issue..." value={formData.reasonForVisit} onChange={(e) => setFormData({...formData, reasonForVisit: e.target.value})} className="h-11 rounded-xl border-input/60 bg-background/50 shadow-sm focus-visible:ring-primary/40 focus-visible:border-primary transition-all" />
                   </div>
+
+                  {/* Nurse Triage Vitals Section */}
+                  <div className="col-span-2 bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/20 space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+                      <HeartPulse className="h-4 w-4" /> Nurse Triage Vitals (Optional at Booking)
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">BP (mmHg)</Label>
+                        <Input 
+                          placeholder="120/80" 
+                          value={formData.vitals.bp} 
+                          onChange={e => setFormData({...formData, vitals: {...formData.vitals, bp: e.target.value}})} 
+                          className="h-9 text-xs bg-background"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Pulse (bpm)</Label>
+                        <Input 
+                          type="number" 
+                          placeholder="72" 
+                          value={formData.vitals.pulse} 
+                          onChange={e => setFormData({...formData, vitals: {...formData.vitals, pulse: e.target.value}})} 
+                          className="h-9 text-xs bg-background"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Weight (kg)</Label>
+                        <Input 
+                          type="number" 
+                          placeholder="70" 
+                          value={formData.vitals.weight} 
+                          onChange={e => setFormData({...formData, vitals: {...formData.vitals, weight: e.target.value}})} 
+                          className="h-9 text-xs bg-background"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Temp (°F)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.1" 
+                          placeholder="98.6" 
+                          value={formData.vitals.temp} 
+                          onChange={e => setFormData({...formData, vitals: {...formData.vitals, temp: e.target.value}})} 
+                          className="h-9 text-xs bg-background"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
                 </div>
                 <div className="flex items-center justify-end gap-3 p-6 border-t border-border/50 bg-card z-10">

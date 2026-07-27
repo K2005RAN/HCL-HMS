@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Printer, Trash2, FileText } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Save, Printer, Trash2, FileText, HeartPulse, Activity, Stethoscope, AlertCircle, CheckCircle2, Sparkles, Thermometer, ShieldCheck } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { openPdfReport } from '@/lib/utils';
@@ -20,7 +21,7 @@ export default function ConsultationView() {
   const [appointment, setAppointment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Form State (empty initial values so actual patient vitals are recorded, not dummy defaults)
+  // Vitals state stored from nurse check-in
   const [vitals, setVitals] = useState({ bp: '', pulse: '', weight: '', temp: '' });
   const [symptoms, setSymptoms] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
@@ -53,9 +54,24 @@ export default function ConsultationView() {
         const res = await axios.get(`${API_BASE_URL}/api/doctor/appointment/${appointmentId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setAppointment(res.data);
-        if (res.data?.patientId?._id) {
-          fetchPatientLabTests(res.data.patientId._id);
+        const apptData = res.data;
+        setAppointment(apptData);
+        
+        if (apptData?.vitals) {
+          setVitals({
+            bp: apptData.vitals.bp || '',
+            pulse: apptData.vitals.pulse || '',
+            weight: apptData.vitals.weight || '',
+            temp: apptData.vitals.temp || ''
+          });
+        }
+
+        if (apptData?.reasonForVisit && !symptoms) {
+          setSymptoms(apptData.reasonForVisit);
+        }
+
+        if (apptData?.patientId?._id) {
+          fetchPatientLabTests(apptData.patientId._id);
         }
       } catch (err) {
         console.error("Failed to fetch appointment", err);
@@ -67,6 +83,31 @@ export default function ConsultationView() {
       fetchAppointment();
     }
   }, [token, appointmentId]);
+
+  const handleApplyPreset = (presetType: string) => {
+    switch (presetType) {
+      case 'fever':
+        setSymptoms('Fever, Cold, Cough, Body ache, Mild headache');
+        setDiagnosis('Acute Upper Respiratory Tract Infection (URTI)');
+        break;
+      case 'hypertension':
+        setSymptoms('Routine Blood Pressure checkup, Mild dizziness');
+        setDiagnosis('Essential Hypertension (Routine Monitoring)');
+        break;
+      case 'gastritis':
+        setSymptoms('Epigastric pain, Heartburn, Nausea, Acidity');
+        setDiagnosis('Acute Gastritis / Dyspepsia');
+        break;
+      case 'fitness':
+        setSymptoms('Annual occupational health screening / Periodic physical test');
+        setDiagnosis('Fit for Duty - Occupational Health Clearance');
+        break;
+      case 'sprain':
+        setSymptoms('Localized joint/muscle pain, Mild swelling after physical activity');
+        setDiagnosis('Acute Musculoskeletal Strain');
+        break;
+    }
+  };
 
   const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -145,7 +186,7 @@ export default function ConsultationView() {
       }
 
       const payload = {
-        vitals,
+        vitals: appointment?.vitals || vitals,
         symptoms,
         diagnosis,
         notes,
@@ -173,7 +214,35 @@ export default function ConsultationView() {
   }
 
   const patient = appointment?.patientId;
-  const doctor = appointment?.doctorId; // We might need to fetch this or rely on auth user if not populated, but auth user works.
+  const doctor = appointment?.doctorId;
+  const apptVitals = appointment?.vitals || vitals;
+  const hasNurseVitals = apptVitals && (apptVitals.bp || apptVitals.pulse || apptVitals.weight || apptVitals.temp);
+
+  // Vitals Status Helper
+  const getTempStatus = (tempStr: string) => {
+    const t = parseFloat(tempStr);
+    if (isNaN(t)) return null;
+    if (t >= 100.4) return { label: 'Fever', color: 'bg-rose-500/10 text-rose-700 border-rose-300' };
+    if (t >= 99.1) return { label: 'Low Fever', color: 'bg-amber-500/10 text-amber-700 border-amber-300' };
+    return { label: 'Normal', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' };
+  };
+
+  const getBpStatus = (bpStr: string) => {
+    if (!bpStr) return null;
+    const parts = bpStr.split('/');
+    if (parts.length === 2) {
+      const sys = parseInt(parts[0]);
+      if (!isNaN(sys)) {
+        if (sys >= 140) return { label: 'High BP', color: 'bg-rose-500/10 text-rose-700 border-rose-300' };
+        if (sys >= 125) return { label: 'Elevated', color: 'bg-amber-500/10 text-amber-700 border-amber-300' };
+        return { label: 'Normal', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' };
+      }
+    }
+    return null;
+  };
+
+  const bpStat = getBpStatus(apptVitals.bp);
+  const tempStat = getTempStatus(apptVitals.temp);
 
   return (
     <>
@@ -184,7 +253,7 @@ export default function ConsultationView() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Consultation</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Doctor Consultation</h2>
             <p className="text-muted-foreground">
               Patient: <span className="font-semibold text-foreground">{patient?.name || 'Unknown'}</span> | 
               Age: {patient?.dob ? new Date().getFullYear() - new Date(patient.dob).getFullYear() : '--'} | 
@@ -203,37 +272,147 @@ export default function ConsultationView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Vitals</CardTitle>
+          
+          {/* Read-Only Nurse Vitals Card */}
+          <Card className="border-border/60 shadow-sm overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent py-4 border-b border-border/40">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                  <HeartPulse className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  Nurse Triage Vitals
+                </CardTitle>
+                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 text-[10px]">
+                  Captured at Check-In
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>BP (mmHg)</Label>
-                  <Input placeholder="120/80" value={vitals.bp} onChange={e => setVitals({...vitals, bp: e.target.value})} />
+            <CardContent className="p-4 space-y-3">
+              {hasNurseVitals ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border/40 space-y-1">
+                    <span className="text-xs text-muted-foreground font-medium">BP (mmHg)</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-bold text-foreground">{apptVitals.bp || '--'}</span>
+                      {bpStat && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${bpStat.color}`}>{bpStat.label}</span>}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border/40 space-y-1">
+                    <span className="text-xs text-muted-foreground font-medium">Pulse (bpm)</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-bold text-foreground">{apptVitals.pulse || '--'}</span>
+                      <span className="text-[10px] text-muted-foreground">bpm</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border/40 space-y-1">
+                    <span className="text-xs text-muted-foreground font-medium">Weight (kg)</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-bold text-foreground">{apptVitals.weight || '--'}</span>
+                      <span className="text-[10px] text-muted-foreground">kg</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border/40 space-y-1">
+                    <span className="text-xs text-muted-foreground font-medium">Temp (°F)</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-bold text-foreground">{apptVitals.temp || '--'}</span>
+                      {tempStat && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${tempStat.color}`}>{tempStat.label}</span>}
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Pulse (bpm)</Label>
-                  <Input placeholder="72" value={vitals.pulse} onChange={e => setVitals({...vitals, pulse: e.target.value})} type="number" />
+              ) : (
+                <div className="p-4 text-center rounded-xl bg-amber-500/5 border border-amber-500/20 text-amber-700 dark:text-amber-400 space-y-1">
+                  <AlertCircle className="h-5 w-5 mx-auto opacity-70" />
+                  <p className="text-xs font-semibold">Vitals Pending Nurse Check-in</p>
+                  <p className="text-[11px] opacity-80">Nursing staff did not enter vitals at appointment booking.</p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Weight (kg)</Label>
-                  <Input placeholder="70" value={vitals.weight} onChange={e => setVitals({...vitals, weight: e.target.value})} type="number" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Temp (°F)</Label>
-                  <Input placeholder="98.6" value={vitals.temp} onChange={e => setVitals({...vitals, temp: e.target.value})} type="number" />
-                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Visit Reason / Chief Complaint Card */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="py-3 border-b border-border/40 bg-muted/20">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" /> Reason for Visit / Chief Complaint
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-sm font-medium text-foreground">
+                "{appointment?.reasonForVisit || 'General Health Checkup / Consultation'}"
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Clinical Presets Widget */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="py-3 border-b border-border/40 bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                Quick Diagnostic Presets
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-2">
+              <p className="text-xs text-muted-foreground mb-2">Click to auto-fill diagnosis & presenting symptoms:</p>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleApplyPreset('fever')}
+                  className="justify-start text-xs h-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  🌡️ Viral Fever & Upper Respiratory
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleApplyPreset('hypertension')}
+                  className="justify-start text-xs h-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  🩺 Hypertension Routine Review
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleApplyPreset('gastritis')}
+                  className="justify-start text-xs h-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  💊 Acute Gastritis / Acidity
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleApplyPreset('fitness')}
+                  className="justify-start text-xs h-8 hover:bg-emerald-500/10 hover:text-emerald-700 transition-colors"
+                >
+                  🛡️ Occupational Fitness Clearance
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleApplyPreset('sprain')}
+                  className="justify-start text-xs h-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  🩹 Musculoskeletal Strain / Injury
+                </Button>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Patient Background</CardTitle>
+          {/* Patient Background Card */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="py-3 border-b border-border/40 bg-muted/20">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Stethoscope className="h-4 w-4 text-primary" /> Patient Background
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
               <div className="text-sm space-y-3">
                 <div>
                   <span className="font-semibold text-foreground">Blood Group:</span> {patient?.bloodGroup || 'Unknown'}
@@ -249,40 +428,42 @@ export default function ConsultationView() {
               </div>
             </CardContent>
           </Card>
+
         </div>
 
         <div className="lg:col-span-2">
-          <Card className="h-full">
+          <Card className="h-full border-border/60 shadow-sm">
             <CardContent className="p-0">
               <Tabs defaultValue="diagnosis" className="w-full h-full">
                 <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
-                  <TabsTrigger value="diagnosis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6">Diagnosis</TabsTrigger>
-                  <TabsTrigger value="prescription" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6">Prescription</TabsTrigger>
-                  <TabsTrigger value="lab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6">Lab Test Orders</TabsTrigger>
+                  <TabsTrigger value="diagnosis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6 font-semibold">Diagnosis</TabsTrigger>
+                  <TabsTrigger value="prescription" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6 font-semibold">Prescription</TabsTrigger>
+                  <TabsTrigger value="lab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6 font-semibold">Lab Test Orders</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="diagnosis" className="p-6 space-y-4">
                   <div className="space-y-2">
-                    <Label>Presenting Symptoms</Label>
+                    <Label className="font-semibold text-foreground">Presenting Symptoms</Label>
                     <Textarea 
-                      placeholder="e.g. Fever, Cough (comma separated)" 
-                      className="h-16" 
+                      placeholder="e.g. Fever, Cough, Headache..." 
+                      className="h-20" 
                       value={symptoms} 
                       onChange={e => setSymptoms(e.target.value)} 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Diagnosis</Label>
+                    <Label className="font-semibold text-foreground">Primary Diagnosis *</Label>
                     <Input 
-                      placeholder="Primary diagnosis" 
+                      placeholder="Enter primary clinical diagnosis..." 
                       value={diagnosis} 
                       onChange={e => setDiagnosis(e.target.value)} 
+                      className="h-11 font-medium"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Doctor's Notes</Label>
+                    <Label className="font-semibold text-foreground">Doctor's Notes & Advice</Label>
                     <Textarea 
-                      placeholder="Additional clinical notes..." 
+                      placeholder="Additional clinical notes, dietary advice, follow-up recommendations..." 
                       className="h-32" 
                       value={notes} 
                       onChange={e => setNotes(e.target.value)} 
@@ -290,45 +471,47 @@ export default function ConsultationView() {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="prescription" className="p-6">
+                <TabsContent value="prescription" className="p-6 space-y-6">
                   <div className="space-y-4">
-                    <div className="grid grid-cols-12 gap-4 items-end">
+                    <div className="grid grid-cols-12 gap-3 items-end">
                       <div className="col-span-5 space-y-2">
-                        <Label>Medicine</Label>
+                        <Label className="font-semibold text-xs text-foreground">Medicine Name</Label>
                         <Input placeholder="e.g. Paracetamol 500mg" value={medInput.medicineName} onChange={e => setMedInput({...medInput, medicineName: e.target.value})} />
                       </div>
                       <div className="col-span-3 space-y-2">
-                        <Label>Dosage</Label>
+                        <Label className="font-semibold text-xs text-foreground">Dosage</Label>
                         <Input placeholder="e.g. 1-0-1" value={medInput.dosage} onChange={e => setMedInput({...medInput, dosage: e.target.value})} />
                       </div>
                       <div className="col-span-3 space-y-2">
-                        <Label>Duration</Label>
+                        <Label className="font-semibold text-xs text-foreground">Duration</Label>
                         <Input placeholder="e.g. 5 Days" value={medInput.duration} onChange={e => setMedInput({...medInput, duration: e.target.value})} />
                       </div>
                       <div className="col-span-1">
-                        <Button variant="outline" size="icon" onClick={handleAddMedicine} disabled={!medInput.medicineName}>+</Button>
+                        <Button type="button" onClick={handleAddMedicine} className="w-full bg-primary hover:bg-primary/90">
+                          Add
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div className="mt-8 border rounded-lg overflow-hidden">
-                      {prescription.length > 0 ? (
+
+                    {prescription.length > 0 ? (
+                      <div className="border rounded-xl overflow-hidden mt-4">
                         <table className="w-full text-sm text-left">
-                          <thead className="bg-muted text-muted-foreground border-b border-border/50">
+                          <thead className="bg-muted/40 text-muted-foreground text-xs uppercase">
                             <tr>
-                              <th className="px-4 py-3 font-medium">Medicine</th>
-                              <th className="px-4 py-3 font-medium">Dosage</th>
-                              <th className="px-4 py-3 font-medium">Duration</th>
-                              <th className="px-4 py-3 text-right">Action</th>
+                              <th className="py-2.5 px-4 font-semibold">Medicine</th>
+                              <th className="py-2.5 px-4 font-semibold">Dosage</th>
+                              <th className="py-2.5 px-4 font-semibold">Duration</th>
+                              <th className="py-2.5 px-4 font-semibold text-right">Action</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-border/50">
+                          <tbody className="divide-y divide-border">
                             {prescription.map((med, idx) => (
-                              <tr key={idx} className="bg-card">
-                                <td className="px-4 py-3 font-medium">{med.medicineName}</td>
-                                <td className="px-4 py-3 text-muted-foreground">{med.dosage}</td>
-                                <td className="px-4 py-3 text-muted-foreground">{med.duration}</td>
-                                <td className="px-4 py-3 text-right">
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => handleRemoveMedicine(idx)}>
+                              <tr key={idx}>
+                                <td className="py-2.5 px-4 font-medium text-foreground">{med.medicineName}</td>
+                                <td className="py-2.5 px-4 text-muted-foreground">{med.dosage}</td>
+                                <td className="py-2.5 px-4 text-muted-foreground">{med.duration}</td>
+                                <td className="py-2.5 px-4 text-right">
+                                  <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicine(idx)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </td>
@@ -336,142 +519,101 @@ export default function ConsultationView() {
                             ))}
                           </tbody>
                         </table>
-                      ) : (
-                        <div className="p-8 text-center text-sm text-muted-foreground bg-slate-50/50">
-                          No medicines added to prescription yet.
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-sm text-muted-foreground border border-dashed rounded-xl">
+                        No prescription items added yet. Fill in medicine details above and click Add.
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
-                
-                <TabsContent value="lab" className="p-6 space-y-6">
-                  <div className="bg-muted/30 p-4 rounded-xl border border-border/50 space-y-4">
-                    <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                      Order New Lab Test
-                    </h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Select Preset Test or Custom</Label>
-                        <select 
-                          value={selectedPresetTest}
-                          onChange={handlePresetChange}
-                          className="w-full h-10 px-3 rounded-md border border-input bg-background/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        >
-                          <option value="">Select Lab Test...</option>
-                          <option value="Complete Blood Count (CBC)">Complete Blood Count (CBC)</option>
-                          <option value="Lipid Profile">Lipid Profile</option>
-                          <option value="Liver Function Test (LFT)">Liver Function Test (LFT)</option>
-                          <option value="Kidney Function Test (KFT)">Kidney Function Test (KFT)</option>
-                          <option value="Fasting Blood Sugar (FBS)">Fasting Blood Sugar (FBS)</option>
-                          <option value="Postprandial Blood Sugar (PPBS)">Postprandial Blood Sugar (PPBS)</option>
-                          <option value="HbA1c">HbA1c</option>
-                          <option value="Urine Routine & Microscopy">Urine Routine & Microscopy</option>
-                          <option value="Chest X-Ray">Chest X-Ray</option>
-                          <option value="ECG 12 Lead">ECG 12 Lead</option>
-                          <option value="Thyroid Profile (T3, T4, TSH)">Thyroid Profile (T3, T4, TSH)</option>
-                          <option value="custom">-- Type Custom Test Name --</option>
-                        </select>
-                      </div>
 
+                <TabsContent value="lab" className="p-6 space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-xs text-foreground">Select Common Test Preset</Label>
+                      <select 
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={selectedPresetTest}
+                        onChange={handlePresetChange}
+                      >
+                        <option value="">-- Choose Preset Lab Test --</option>
+                        <option value="Complete Blood Count (CBC)">Complete Blood Count (CBC)</option>
+                        <option value="Lipid Profile">Lipid Profile</option>
+                        <option value="Fasting Blood Sugar (FBS)">Fasting Blood Sugar (FBS)</option>
+                        <option value="Post Prandial Blood Sugar (PPBS)">Post Prandial Blood Sugar (PPBS)</option>
+                        <option value="Liver Function Test (LFT)">Liver Function Test (LFT)</option>
+                        <option value="Kidney Function Test (KFT)">Kidney Function Test (KFT)</option>
+                        <option value="Thyroid Profile (T3, T4, TSH)">Thyroid Profile (T3, T4, TSH)</option>
+                        <option value="Urine Routine Analysis">Urine Routine Analysis</option>
+                        <option value="Chest X-Ray PA View">Chest X-Ray PA View</option>
+                        <option value="ECG (12 Lead)">ECG (12 Lead)</option>
+                        <option value="custom">-- Custom Test --</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Test Name</Label>
+                        <Label className="font-semibold text-xs text-foreground">Test Name</Label>
                         <Input 
-                          placeholder="e.g. Vitamin D3 level" 
+                          placeholder="e.g. CBC or Lipid Profile" 
                           value={labTestInput.testName} 
                           onChange={e => setLabTestInput({ ...labTestInput, testName: e.target.value })} 
                         />
                       </div>
-
                       <div className="space-y-2">
-                        <Label>Category</Label>
+                        <Label className="font-semibold text-xs text-foreground">Category</Label>
                         <select 
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                           value={labTestInput.category}
                           onChange={e => setLabTestInput({ ...labTestInput, category: e.target.value })}
-                          className="w-full h-10 px-3 rounded-md border border-input bg-background/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         >
                           <option value="Hematology">Hematology</option>
                           <option value="Biochemistry">Biochemistry</option>
                           <option value="Pathology">Pathology</option>
                           <option value="Radiology">Radiology</option>
-                          <option value="Microbiology">Microbiology</option>
                           <option value="General">General</option>
                         </select>
                       </div>
-
-                      <div className="space-y-2">
-                        <Label>Clinical Instructions / Remarks</Label>
+                      <div className="col-span-2 space-y-2">
+                        <Label className="font-semibold text-xs text-foreground">Clinical Remarks / Instructions</Label>
                         <Input 
-                          placeholder="e.g. Fasting sample required" 
+                          placeholder="e.g. Fasting required, urgent result..." 
                           value={labTestInput.remarks} 
                           onChange={e => setLabTestInput({ ...labTestInput, remarks: e.target.value })} 
                         />
                       </div>
                     </div>
 
-                    <div className="flex justify-end pt-2">
-                      <Button onClick={handleOrderLabTest} disabled={orderingLab || !labTestInput.testName.trim()}>
-                        {orderingLab ? 'Ordering...' : 'Order Lab Test'}
-                      </Button>
-                    </div>
-                  </div>
+                    <Button 
+                      onClick={handleOrderLabTest} 
+                      disabled={orderingLab || !labTestInput.testName}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                    >
+                      {orderingLab ? 'Ordering...' : 'Order Lab Test'}
+                    </Button>
 
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm text-foreground">Lab Test Orders & Reports History</h4>
-                    {patientLabTests.length > 0 ? (
-                      <div className="border border-border/50 rounded-xl overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                          <thead className="bg-muted text-muted-foreground border-b border-border/50">
-                            <tr>
-                              <th className="px-4 py-3 font-medium">Test Name</th>
-                              <th className="px-4 py-3 font-medium">Category</th>
-                              <th className="px-4 py-3 font-medium">Status</th>
-                              <th className="px-4 py-3 font-medium">Result Notes / Findings</th>
-                              <th className="px-4 py-3 font-medium">Date Requested</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border/50">
-                            {patientLabTests.map((t: any) => (
-                              <tr key={t._id} className="bg-card">
-                                <td className="px-4 py-3 font-semibold">{t.testName}</td>
-                                <td className="px-4 py-3 text-muted-foreground">{t.category}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                    t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
-                                    t.status === 'Sample Collected' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
-                                    'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                                  }`}>
-                                    {t.status}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-muted-foreground">
-                                  <div>{t.resultNotes || (t.status === 'Completed' ? 'Report ready' : 'Awaiting results from lab')}</div>
-                                  {t.pdfReportUrl && (
-                                    <div className="mt-1.5">
-                                      <button 
-                                        type="button"
-                                        onClick={() => openPdfReport(t.pdfReportUrl)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-xs font-semibold border border-primary/20 transition-all shadow-sm cursor-pointer"
-                                      >
-                                        <FileText className="h-3.5 w-3.5" /> View Uploaded PDF Report
-                                      </button>
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 text-muted-foreground">
-                                  {new Date(t.createdAt).toLocaleDateString()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center text-sm text-muted-foreground bg-slate-50/50 rounded-xl border border-dashed">
-                        No lab test orders recorded for this patient.
-                      </div>
-                    )}
+                    {/* Patient's Lab Test History */}
+                    <div className="mt-6 pt-4 border-t border-border">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Ordered Lab Tests for Patient</h4>
+                      {patientLabTests.length > 0 ? (
+                        <div className="space-y-2">
+                          {patientLabTests.map(t => (
+                            <div key={t._id} className="p-3 rounded-lg bg-muted/30 border border-border flex justify-between items-center text-sm">
+                              <div>
+                                <span className="font-bold text-foreground">{t.testName}</span>
+                                <span className="text-xs text-muted-foreground ml-2">({t.category})</span>
+                              </div>
+                              <Badge variant={t.status === 'Completed' ? 'default' : 'secondary'}>
+                                {t.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No lab tests ordered for this patient yet.</p>
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -481,46 +623,43 @@ export default function ConsultationView() {
       </div>
     </div>
 
-    {/* PRINT LAYOUT */}
-    <div className="hidden print:block w-[210mm] min-h-[297mm] bg-white text-black p-10 border-2 border-black mx-auto shadow-none print:shadow-none print:border-0 print:m-0 print:p-0">
-      <div className="border border-black p-6 rounded-sm min-h-[90vh]">
-        {/* Header */}
-        <div className="flex justify-between items-start border-b-2 border-green-700 pb-6 mb-6">
+    {/* Printable Medical Prescription Sheet */}
+    <div className="hidden print:block p-8 bg-white text-black font-sans leading-relaxed">
+      <div className="border-b-2 border-gray-800 pb-6 mb-6 flex justify-between items-start">
         <div>
-          <img src="/logo.svg" alt="HeidelbergCement Logo" className="h-16 mb-2" />
-          <p className="text-sm text-gray-500 font-medium tracking-wide">OCCUPATIONAL HEALTH CENTER</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">HEIDELBERGCEMENT INDIA</h1>
+          <h2 className="text-lg font-semibold text-gray-700">Occupational Health Center</h2>
+          <p className="text-gray-500 text-xs mt-1">Medical Examination & Prescription Sheet</p>
         </div>
-        <div className="text-right">
-          <h2 className="text-xl font-bold text-gray-800">Prescription</h2>
-          <p className="text-gray-600 mt-1 text-sm font-medium">Date: {new Date().toLocaleDateString()}</p>
+        <div className="text-right text-xs text-gray-600">
+          <p className="font-bold text-sm text-gray-800">Date: {new Date().toLocaleDateString()}</p>
+          <p>Time: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+          <p>Ref #: {appointmentId?.slice(-6).toUpperCase()}</p>
         </div>
       </div>
 
-      {/* Doctor & Patient Info */}
-      <div className="grid grid-cols-2 gap-8 mb-8 border-b pb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-lg text-sm">
         <div>
-          <h3 className="font-bold text-gray-800 uppercase text-xs tracking-wider mb-2 text-green-700">Doctor Details</h3>
-          <p className="font-bold text-lg">{appointment?.doctorId?.name || 'Authorized Physician'}</p>
-          {appointment?.doctorId?.specialization && <p className="text-gray-600">{appointment.doctorId.specialization}</p>}
+          <p><span className="font-bold text-gray-700">Patient Name:</span> {patient?.name || 'Unknown'}</p>
+          <p><span className="font-bold text-gray-700">Employee / Patient ID:</span> {patient?.patientId || '--'}</p>
         </div>
         <div>
-          <h3 className="font-bold text-gray-800 uppercase text-xs tracking-wider mb-2 text-green-700">Patient Details</h3>
-          <p className="font-bold text-lg">{patient?.name || 'Unknown Patient'}</p>
-          <p className="text-gray-600">
+          <p>
+            <span className="font-bold text-gray-700">Age / Gender / Blood Group:</span>{' '}
             {patient?.age || (patient?.dob ? new Date().getFullYear() - new Date(patient.dob).getFullYear() : '--')} Years | {patient?.gender || '--'} | {patient?.bloodGroup || '--'}
           </p>
           {patient?.phone && <p className="text-gray-500 text-sm mt-1">Ph: {patient.phone}</p>}
         </div>
       </div>
 
-      {/* Vitals */}
+      {/* Read-Only Nurse Captured Vitals in Print */}
       <div className="mb-8">
-        <h3 className="font-bold text-gray-800 uppercase text-xs tracking-wider mb-3 text-green-700">Vitals & Assessment</h3>
+        <h3 className="font-bold text-gray-800 uppercase text-xs tracking-wider mb-3 text-green-700">Vitals & Assessment (Captured by Nurse)</h3>
         <div className="flex gap-8 text-sm bg-gray-50 p-4 rounded-lg">
-          <div><span className="font-semibold">BP:</span> {vitals.bp || '--'}</div>
-          <div><span className="font-semibold">Pulse:</span> {vitals.pulse || '--'}</div>
-          <div><span className="font-semibold">Weight:</span> {vitals.weight ? `${vitals.weight} kg` : '--'}</div>
-          <div><span className="font-semibold">Temp:</span> {vitals.temp ? `${vitals.temp} °F` : '--'}</div>
+          <div><span className="font-semibold">BP:</span> {apptVitals.bp || '--'}</div>
+          <div><span className="font-semibold">Pulse:</span> {apptVitals.pulse ? `${apptVitals.pulse} bpm` : '--'}</div>
+          <div><span className="font-semibold">Weight:</span> {apptVitals.weight ? `${apptVitals.weight} kg` : '--'}</div>
+          <div><span className="font-semibold">Temp:</span> {apptVitals.temp ? `${apptVitals.temp} °F` : '--'}</div>
         </div>
       </div>
 
@@ -576,11 +715,10 @@ export default function ConsultationView() {
           <p>HeidelbergCement India Occupational Health Center</p>
         </div>
         <div className="text-center w-48 border-t-2 border-gray-800 pt-2">
-          <p className="font-bold text-sm text-gray-800">Doctor's Signature</p>
+          <p className="font-bold text-sm text-gray-800">{doctor?.name ? `Dr. ${doctor.name}` : "Doctor's Signature"}</p>
         </div>
       </div>
-      
-      </div>
+
     </div>
     </>
   );

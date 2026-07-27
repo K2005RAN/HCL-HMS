@@ -120,15 +120,24 @@ export const completeConsultation = async (req: AuthRequest, res: Response): Pro
         // Clean prescription array
         const finalPrescriptions = Array.isArray(prescription) ? prescription.filter((p: any) => p && p.medicineName) : [];
 
+        // Fallback to vitals captured during appointment/triage by Nurse Staff
+        const apptVitals: any = appointment.vitals || {};
+        const effectiveVitals = {
+            bp: vitals?.bp || apptVitals.bp || '',
+            pulse: vitals?.pulse || apptVitals.pulse || '',
+            weight: vitals?.weight || apptVitals.weight || '',
+            temp: vitals?.temp || apptVitals.temp || ''
+        };
+
         // Create Medical Record
         const newRecord = new MedicalRecord({
             patientId: appointment.patientId,
             doctorId: effectiveDoctorId,
             appointmentId: appointment._id,
-            bloodPressure: vitals?.bp,
-            pulse: vitals?.pulse,
-            weight: vitals?.weight,
-            temperature: vitals?.temp,
+            bloodPressure: effectiveVitals.bp,
+            pulse: effectiveVitals.pulse,
+            weight: effectiveVitals.weight,
+            temperature: effectiveVitals.temp,
             symptoms: symptoms ? (Array.isArray(symptoms) ? symptoms : symptoms.split(',').map((s: string) => s.trim())) : [],
             diagnosis: diagnosis || 'Not specified',
             prescription: finalPrescriptions,

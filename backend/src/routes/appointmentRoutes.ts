@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAppointments, createAppointment, updateAppointmentStatus, getDoctors, getPatients, searchPatient } from '../controllers/appointmentController';
+import { getAppointments, createAppointment, updateAppointmentStatus, updateAppointmentVitals, getDoctors, getPatients, searchPatient } from '../controllers/appointmentController';
 import { protect, authorize } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -15,5 +15,6 @@ router.route('/')
     .post(authorize('Receptionist', 'Super Admin', 'Doctor', 'Admin', 'Staff'), createAppointment);
 
 router.put('/:id/status', authorize('Receptionist', 'Doctor', 'Super Admin', 'Admin', 'Staff'), updateAppointmentStatus);
+router.put('/:id/vitals', authorize('Receptionist', 'Doctor', 'Super Admin', 'Admin', 'Staff'), updateAppointmentVitals);
 
 export default router;

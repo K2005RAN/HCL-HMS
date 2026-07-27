@@ -81,6 +81,29 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
     }
 };
 
+// @route   PUT /api/appointments/:id/vitals
+// @desc    Record/Update appointment vitals by Nurse or Staff
+export const updateAppointmentVitals = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { vitals } = req.body;
+        const appointment = await Appointment.findByIdAndUpdate(
+            req.params.id,
+            { vitals },
+            { new: true }
+        );
+        
+        if (!appointment) {
+            res.status(404).json({ message: 'Appointment not found' });
+            return;
+        }
+        
+        res.json(appointment);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error });
+    }
+};
+
+
 import Doctor from '../models/Doctor';
 import Patient from '../models/Patient';
 
