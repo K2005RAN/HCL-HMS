@@ -36,35 +36,11 @@ Log in using any of the following pre-configured credentials to evaluate specifi
 | Role Panel | Access Level | Demo Email / Identifier | Demo Password | Key Features Accessible |
 | :--- | :--- | :--- | :--- | :--- |
 | **Super Admin** | System-Wide | `admin@heidelberg.in` | `password123` | Global audit logs, user management, system configs |
-| **Doctor** | Clinical Operations | `doctor@heidelberg.in` | `password123` | Patient EMR, instant Rx drafting, lab test requests |
-| **Hospital Staff** | Administrative | `staff@heidelberg.in` | `password123` | Attendance tracking, check-ins, bulk CSV ingestion |
-| **Patient / Employee** | Self-Service | `patient@heidelberg.in` | `password123` | Medical history, active prescriptions, lab downloads |
 
 > ⚠️ *Note: These credentials are provided exclusively for demonstration and evaluation purposes.*
 
 ---
 
-## 🏗️ System Architecture
-
-HCL-HMS utilizes a decoupled, modern client-server architecture designed for high throughput, security, and responsive real-time data flow.
-
-                  ┌─────────────────────────────────────────┐
-                  │        React 18 + Vite Frontend         │
-                  │   (Tailwind CSS, Shadcn UI, TypeScript)  │
-                  └────────────────────┬────────────────────┘
-                                       │
-                                       │ HTTPS / REST API / JWT
-                                       ▼
-                  ┌─────────────────────────────────────────┐
-                  │          Node.js / Express API          │
-                  │            (Backend Service)            │
-                  └────────────────────┬────────────────────┘
-                                       │
-     ┌─────────────────────────────────┼─────────────────────────────────┐
-     │                                 │                                 │
-     ▼                                 ▼                                 ▼
-┌──────────────────┐             ┌──────────────────┐             ┌──────────────────┐│  Auth Engine     │             │  Clinical Engine │             │ Audit Log Engine ││  (JWT & BCrypt)  │             │  (EMR / Rx / Lab)│             │ (IP & Timestamp) │└────────┬─────────┘             └────────┬─────────┘             └────────┬─────────┘│                                 │                                 │└─────────────────────────────────┼─────────────────────────────────┘│▼┌─────────────────────────────────────────┐│        MongoDB & Mongoose ODM           ││         (Enterprise Database)           │└─────────────────────────────────────────┘
----
 
 ## ✨ Key Platform Features
 
