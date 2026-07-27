@@ -115,6 +115,16 @@ HCL-HMS utilizes a decoupled, modern client-server architecture designed for hig
 
 ---
 
+## 🏗️ System Architecture
+
+HCL-HMS utilizes a decoupled, modern client-server architecture designed for high throughput, security, and responsive real-time data flow.
+
+<div align="center">
+  <img src="./assets/architecture.png" alt="HCL-HMS System Architecture" width="850" />
+</div>
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
