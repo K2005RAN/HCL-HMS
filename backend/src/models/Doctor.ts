@@ -21,7 +21,7 @@ const DoctorSchema: Schema = new Schema({
     specialization: { type: String, required: true },
     department: { type: String, default: 'General' },
     phone: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     availableDays: [{ type: String }],
     availableTimeStart: { type: String, default: '09:00' },

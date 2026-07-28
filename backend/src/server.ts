@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import path from 'path';
 import connectDB from './config/db';
 import authRoutes from './routes/authRoutes';
 import employeeRoutes from './routes/employeeRoutes';
@@ -18,7 +19,7 @@ import doctorRoutes from './routes/doctorRoutes';
 import patientRoutes from './routes/patientRoutes';
 import { auditLogger } from './middlewares/auditMiddleware';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;

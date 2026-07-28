@@ -1,16 +1,17 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
+import path from 'path';
 import Admin from '../models/Admin';
 import Doctor from '../models/Doctor';
 import Patient from '../models/Patient';
 import Staff from '../models/Staff';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const seedRoles = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/hci-hms');
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://admin:password@localhost:27017/hci-hms?authSource=admin');
         console.log('Connected to MongoDB');
 
         // Preserving existing collections

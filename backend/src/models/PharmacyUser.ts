@@ -13,7 +13,7 @@ export interface IPharmacyUser extends Document {
 const PharmacyUserSchema: Schema = new Schema({
     pharmacyId: { type: String, unique: true, sparse: true },
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     department: { type: String, default: 'Pharmacy' },
     phone: { type: String, default: 'N/A' },

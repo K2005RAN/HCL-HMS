@@ -25,7 +25,8 @@ export default function LoginPage() {
     setError('');
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password, role });
+      const cleanEmail = email.trim();
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { email: cleanEmail, password, role });
       login(response.data.token, response.data.user);
       navigate('/dashboard');
     } catch (err: any) {

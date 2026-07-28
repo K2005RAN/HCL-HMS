@@ -13,7 +13,7 @@ export interface ILabUser extends Document {
 const LabUserSchema: Schema = new Schema({
     labId: { type: String, unique: true, sparse: true },
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     department: { type: String, default: 'Laboratory' },
     phone: { type: String, default: 'N/A' },

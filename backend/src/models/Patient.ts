@@ -26,7 +26,7 @@ const PatientSchema: Schema = new Schema({
     dob: { type: Date, required: true },
     bloodGroup: { type: String },
     phone: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     address: { type: String, required: true },
     emergencyContact: { type: String, required: true },

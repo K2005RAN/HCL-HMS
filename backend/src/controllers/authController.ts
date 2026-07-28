@@ -47,9 +47,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        let user = await Model.findOne({ email });
+        const cleanEmail = typeof email === 'string' ? email.trim() : '';
+        if (!cleanEmail) {
+            res.status(400).json({ message: 'Email is required' });
+            return;
+        }
+
+        const emailFilter = { email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } };
+
+        let user: any = await Model.findOne(emailFilter).lean();
         if (!user && (role.toLowerCase() === 'lab' || role.toLowerCase() === 'pharmacy')) {
-            user = await Staff.findOne({ email }) as any;
+            user = await Staff.findOne(emailFilter).lean();
         }
 
         if (!user) {
@@ -57,13 +65,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const isMatch = await bcrypt.compare(password, (user as any).passwordHash);
+        const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
             res.status(401).json({ message: 'Invalid credentials' });
             return;
         }
 
-        if ((user as any).isActive === false) {
+        if (user.isActive === false) {
             res.status(403).json({ message: 'Account is disabled' });
             return;
         }
@@ -72,8 +80,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             { 
                 id: user._id, 
                 role: role.toLowerCase(),
-                name: (user as any).name,
-                email: (user as any).email
+                name: user.name,
+                email: user.email
             },
             JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
@@ -82,14 +90,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         // Record successful login in background (non-blocking for faster login response)
         AuditLog.create({
             userId: user._id,
-            userName: (user as any).name,
+            userName: user.name,
             userRole: role.toLowerCase(),
             action: 'Login',
             details: `Successful login as ${role}`,
             ipAddress: req.ip || req.connection?.remoteAddress || 'Unknown'
         }).catch(err => console.error('Audit Log login recording error:', err));
 
-        const userObj = user.toObject();
+        const userObj = { ...user };
         delete userObj.passwordHash;
         userObj.role = role.toLowerCase();
 
@@ -250,23 +258,23 @@ export const getMe = async (req: any, res: Response): Promise<void> => {
         const userId = req.user.id || req.user._id;
         const userRole = req.user.role || 'user';
 
-        const models = [Admin, Doctor, Patient, Staff];
+        const PrimaryModel = getModelByRole(userRole);
         let foundUser: any = null;
 
-        const PrimaryModel = getModelByRole(userRole);
         if (PrimaryModel) {
-            foundUser = await PrimaryModel.findById(userId).select('-passwordHash');
+            foundUser = await PrimaryModel.findById(userId).select('-passwordHash').lean();
         }
 
         if (!foundUser) {
-            for (const Model of models) {
-                foundUser = await Model.findById(userId).select('-passwordHash');
-                if (foundUser) break;
-            }
+            const models = [Admin, Doctor, Patient, Staff];
+            const results = await Promise.all(
+                models.map(M => M.findById(userId).select('-passwordHash').lean().catch(() => null))
+            );
+            foundUser = results.find(u => u !== null);
         }
 
         if (foundUser) {
-            const userObj = foundUser.toObject();
+            const userObj = { ...foundUser };
             userObj.role = userRole;
             res.json(userObj);
             return;

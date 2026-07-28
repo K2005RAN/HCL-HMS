@@ -12,7 +12,7 @@ export interface IStaff extends Document {
 const StaffSchema: Schema = new Schema({
     staffId: { type: String, unique: true, sparse: true },
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     department: { type: String, required: true },
     isActive: { type: Boolean, default: true },

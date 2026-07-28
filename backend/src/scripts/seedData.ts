@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
 import Doctor from '../models/Doctor';
 import Patient from '../models/Patient';
 import Appointment from '../models/Appointment';
@@ -12,11 +13,11 @@ import Attendance from '../models/Attendance';
 import AuditLog from '../models/AuditLog';
 import Admin from '../models/Admin';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const seedData = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/hci-hms');
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://admin:password@localhost:27017/hci-hms?authSource=admin');
         console.log('Connected to MongoDB');
 
         // Preserving existing data
