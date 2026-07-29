@@ -45,7 +45,6 @@ export default function PatientDashboard() {
   const [selectedVisitModal, setSelectedVisitModal] = useState<any | null>(null);
 
   // Change Password State
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState('HCIL2026');
   const [newPassword, setNewPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -167,7 +166,7 @@ export default function PatientDashboard() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-8 max-w-6xl mx-auto">
-      {/* Top Banner */}
+      {/* Header Banner */}
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4 border-b border-border/50 pb-6">
         <motion.div variants={itemVariants}>
           <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-br from-primary to-accent bg-clip-text text-transparent">
@@ -188,8 +187,203 @@ export default function PatientDashboard() {
         </motion.div>
       </div>
 
-      {/* Top Cards: Medical Profile & Account Security */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* TOP SECTION: Full Width Consultation Visit Records Table */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        {/* Search & Date Filter Bar */}
+        <Card className="glass border-border/50 shadow-sm">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search diagnosis, doctor name, or medicines..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9 h-10 text-xs bg-background/80 border-border/60 rounded-xl"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="h-10 text-xs bg-background/80 border-border/60 rounded-xl w-full sm:w-44"
+                />
+                {(searchQuery || filterDate) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-10 text-xs text-destructive hover:bg-destructive/10 rounded-xl font-bold"
+                  >
+                    <X className="h-4 w-4 mr-1" /> Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Visits Table */}
+        <Card className="glass border-border/50 shadow-xl overflow-hidden">
+          <CardHeader className="border-b border-border/50 bg-muted/20 py-4 px-6 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg font-extrabold text-foreground">
+              <History className="w-5 h-5 text-primary" /> My Consultation History Records
+            </CardTitle>
+            <Badge variant="outline" className="bg-background text-xs font-bold">
+              {filteredHistory.length} Visits Listed
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-0">
+            {filteredHistory.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow className="border-border/50 hover:bg-transparent">
+                      <TableHead className="text-foreground font-bold py-3.5 text-xs">Visit Date & Time</TableHead>
+                      <TableHead className="text-foreground font-bold py-3.5 text-xs">Attending Doctor</TableHead>
+                      <TableHead className="text-foreground font-bold py-3.5 text-xs">Diagnosis & Symptoms</TableHead>
+                      <TableHead className="text-foreground font-bold py-3.5 text-xs">Prescription Status</TableHead>
+                      <TableHead className="text-foreground font-bold py-3.5 text-xs">Lab Status</TableHead>
+                      <TableHead className="text-right text-foreground font-bold py-3.5 text-xs">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredHistory.map((record: any) => {
+                      const doctor = record.doctorId || {};
+                      const isDispensed = record.pharmacyStatus === 'Dispensed';
+                      const hasPrescription = Array.isArray(record.prescription) && record.prescription.length > 0;
+
+                      return (
+                        <TableRow key={record._id} className="border-border/50 hover:bg-muted/40 transition-colors">
+                          {/* Visit Date */}
+                          <TableCell className="py-3.5 font-semibold text-xs whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-foreground font-bold">
+                              <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
+                              {new Date(record.createdAt).toLocaleDateString(undefined, {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </div>
+                            <div className="text-muted-foreground text-[11px] mt-0.5 pl-5">
+                              {new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </TableCell>
+
+                          {/* Attending Doctor */}
+                          <TableCell className="py-3.5">
+                            <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                              <Stethoscope className="h-3.5 w-3.5 text-primary shrink-0" />
+                              Dr. {doctor.name || 'OHC Medical Staff'}
+                            </div>
+                            {doctor.department && (
+                              <div className="text-[11px] text-muted-foreground pl-5 font-medium">
+                                {doctor.department}
+                              </div>
+                            )}
+                          </TableCell>
+
+                          {/* Diagnosis & Symptoms */}
+                          <TableCell className="py-3.5 max-w-[200px]">
+                            <div className="font-semibold text-foreground text-xs line-clamp-2">
+                              {record.diagnosis || 'General Consultation'}
+                            </div>
+                            {Array.isArray(record.symptoms) && record.symptoms.length > 0 && (
+                              <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                                Symptoms: {record.symptoms.join(', ')}
+                              </div>
+                            )}
+                          </TableCell>
+
+                          {/* Prescription & Pharmacy Status */}
+                          <TableCell className="py-3.5">
+                            <div className="space-y-1">
+                              {hasPrescription ? (
+                                <div className="text-xs font-semibold text-foreground line-clamp-1">
+                                  {record.prescription.map((m: any) => m.medicineName).join(', ')}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">No Rx</span>
+                              )}
+                              <div>
+                                <Badge variant="outline" className={
+                                  isDispensed
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2 py-0'
+                                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2 py-0'
+                                }>
+                                  {isDispensed ? 'Pharmacy: Dispensed' : 'Pharmacy: Pending'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          {/* Lab Status */}
+                          <TableCell className="py-3.5">
+                            {record.labStatus === 'Completed' ? (
+                              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2.5 py-0.5">
+                                <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" /> Completed
+                              </Badge>
+                            ) : record.labStatus === 'Pending' ? (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2.5 py-0.5">
+                                <Clock className="h-3 w-3 mr-1 text-amber-500" /> Pending
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground font-medium pl-1">No Record</span>
+                            )}
+                          </TableCell>
+
+                          {/* Action Button */}
+                          <TableCell className="text-right py-3.5">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => setSelectedVisitModal(record)}
+                              className="shadow-sm hover:scale-105 transition-all text-xs font-bold rounded-xl gap-1.5"
+                            >
+                              <Eye className="h-3.5 w-3.5" /> View Details
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground space-y-3">
+                <div className="w-16 h-16 rounded-3xl bg-muted/60 flex items-center justify-center border">
+                  <History className="h-8 w-8 opacity-40 text-primary" />
+                </div>
+                <p className="text-lg font-bold text-foreground">No visit records found</p>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  {searchQuery || filterDate
+                    ? "No records match your search query or date filter."
+                    : "You do not have any recorded medical visits in the system yet."}
+                </p>
+                {(searchQuery || filterDate) && (
+                  <Button variant="outline" onClick={clearFilters} className="rounded-xl mt-2 text-xs font-semibold">
+                    Clear Search Filters
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* BOTTOM SECTION: Medical Profile & Account Security Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
         {/* Left: Medical Profile */}
         <motion.div variants={itemVariants}>
           <Card className="glass border-border/50 shadow-lg h-full flex flex-col justify-between">
@@ -285,201 +479,6 @@ export default function PatientDashboard() {
           </Card>
         </motion.div>
       </div>
-
-      {/* Full Width Consultation Visit Records Table */}
-      <motion.div variants={itemVariants} className="space-y-4">
-          {/* Search & Date Filter Bar */}
-          <Card className="glass border-border/50 shadow-sm">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search diagnosis, doctor name, or medicines..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-9 h-10 text-xs bg-background/80 border-border/60 rounded-xl"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Input
-                    type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    className="h-10 text-xs bg-background/80 border-border/60 rounded-xl w-full sm:w-44"
-                  />
-                  {(searchQuery || filterDate) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearFilters}
-                      className="h-10 text-xs text-destructive hover:bg-destructive/10 rounded-xl font-bold"
-                    >
-                      <X className="h-4 w-4 mr-1" /> Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Visits Table */}
-          <Card className="glass border-border/50 shadow-xl overflow-hidden">
-            <CardHeader className="border-b border-border/50 bg-muted/20 py-4 px-6 flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg font-extrabold text-foreground">
-                <History className="w-5 h-5 text-primary" /> My Consultation History Records
-              </CardTitle>
-              <Badge variant="outline" className="bg-background text-xs font-bold">
-                {filteredHistory.length} Visits Listed
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              {filteredHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-muted/30">
-                      <TableRow className="border-border/50 hover:bg-transparent">
-                        <TableHead className="text-foreground font-bold py-3.5 text-xs">Visit Date & Time</TableHead>
-                        <TableHead className="text-foreground font-bold py-3.5 text-xs">Attending Doctor</TableHead>
-                        <TableHead className="text-foreground font-bold py-3.5 text-xs">Diagnosis & Symptoms</TableHead>
-                        <TableHead className="text-foreground font-bold py-3.5 text-xs">Prescription Status</TableHead>
-                        <TableHead className="text-foreground font-bold py-3.5 text-xs">Lab Status</TableHead>
-                        <TableHead className="text-right text-foreground font-bold py-3.5 text-xs">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredHistory.map((record: any) => {
-                        const doctor = record.doctorId || {};
-                        const isDispensed = record.pharmacyStatus === 'Dispensed';
-                        const hasPrescription = Array.isArray(record.prescription) && record.prescription.length > 0;
-
-                        return (
-                          <TableRow key={record._id} className="border-border/50 hover:bg-muted/40 transition-colors">
-                            {/* Visit Date */}
-                            <TableCell className="py-3.5 font-semibold text-xs whitespace-nowrap">
-                              <div className="flex items-center gap-1.5 text-foreground font-bold">
-                                <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
-                                {new Date(record.createdAt).toLocaleDateString(undefined, {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric'
-                                })}
-                              </div>
-                              <div className="text-muted-foreground text-[11px] mt-0.5 pl-5">
-                                {new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </TableCell>
-
-                            {/* Attending Doctor */}
-                            <TableCell className="py-3.5">
-                              <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                <Stethoscope className="h-3.5 w-3.5 text-primary shrink-0" />
-                                Dr. {doctor.name || 'OHC Medical Staff'}
-                              </div>
-                              {doctor.department && (
-                                <div className="text-[11px] text-muted-foreground pl-5 font-medium">
-                                  {doctor.department}
-                                </div>
-                              )}
-                            </TableCell>
-
-                            {/* Diagnosis & Symptoms */}
-                            <TableCell className="py-3.5 max-w-[200px]">
-                              <div className="font-semibold text-foreground text-xs line-clamp-2">
-                                {record.diagnosis || 'General Consultation'}
-                              </div>
-                              {Array.isArray(record.symptoms) && record.symptoms.length > 0 && (
-                                <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                                  Symptoms: {record.symptoms.join(', ')}
-                                </div>
-                              )}
-                            </TableCell>
-
-                            {/* Prescription & Pharmacy Status */}
-                            <TableCell className="py-3.5">
-                              <div className="space-y-1">
-                                {hasPrescription ? (
-                                  <div className="text-xs font-semibold text-foreground line-clamp-1">
-                                    {record.prescription.map((m: any) => m.medicineName).join(', ')}
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground italic">No Rx</span>
-                                )}
-                                <div>
-                                  <Badge variant="outline" className={
-                                    isDispensed
-                                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2 py-0'
-                                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2 py-0'
-                                  }>
-                                    {isDispensed ? 'Pharmacy: Dispensed' : 'Pharmacy: Pending'}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            {/* Lab Status */}
-                            <TableCell className="py-3.5">
-                              {record.labStatus === 'Completed' ? (
-                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2.5 py-0.5">
-                                  <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" /> Completed
-                                </Badge>
-                              ) : record.labStatus === 'Pending' ? (
-                                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2.5 py-0.5">
-                                  <Clock className="h-3 w-3 mr-1 text-amber-500" /> Pending
-                                </Badge>
-              ) : (
-                                <span className="text-xs text-muted-foreground font-medium pl-1">No Record</span>
-                              )}
-                            </TableCell>
-
-                            {/* Action Button */}
-                            <TableCell className="text-right py-3.5">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => setSelectedVisitModal(record)}
-                                className="shadow-sm hover:scale-105 transition-all text-xs font-bold rounded-xl gap-1.5"
-                              >
-                                <Eye className="h-3.5 w-3.5" /> View Details
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground space-y-3">
-                  <div className="w-16 h-16 rounded-3xl bg-muted/60 flex items-center justify-center border">
-                    <History className="h-8 w-8 opacity-40 text-primary" />
-                  </div>
-                  <p className="text-lg font-bold text-foreground">No visit records found</p>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    {searchQuery || filterDate
-                      ? "No records match your search query or date filter."
-                      : "You do not have any recorded medical visits in the system yet."}
-                  </p>
-                  {(searchQuery || filterDate) && (
-                    <Button variant="outline" onClick={clearFilters} className="rounded-xl mt-2 text-xs font-semibold">
-                      Clear Search Filters
-                    </Button>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
 
       {/* Interactive Full Visit Details Modal for Patients & Employees */}
       {selectedVisitModal && (
