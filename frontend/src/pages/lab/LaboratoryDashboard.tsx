@@ -19,7 +19,7 @@ export default function LaboratoryDashboard() {
   const [tests, setTests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal state for uploading report / findings
   const [selectedTest, setSelectedTest] = useState<any>(null);
   const [resultNotes, setResultNotes] = useState('');
@@ -140,7 +140,7 @@ export default function LaboratoryDashboard() {
             </CardContent>
           </Card>
         </motion.div>
-        
+
         <motion.div variants={itemVariants}>
           <Card className="glass relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-blue-500/20">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -179,11 +179,11 @@ export default function LaboratoryDashboard() {
               <CardTitle className="text-xl">Lab Test Requests</CardTitle>
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search patient, ID or test..." 
+                <Input
+                  placeholder="Search patient, ID or test..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-background/50 border-border/50 focus:ring-primary/50 transition-all rounded-xl" 
+                  className="pl-9 bg-background/50 border-border/50 focus:ring-primary/50 transition-all rounded-xl"
                 />
               </div>
             </div>
@@ -211,7 +211,7 @@ export default function LaboratoryDashboard() {
                       const age = p?.dob ? new Date().getFullYear() - new Date(p.dob).getFullYear() : null;
 
                       return (
-                        <motion.tr 
+                        <motion.tr
                           key={test._id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -266,8 +266,8 @@ export default function LaboratoryDashboard() {
                           <TableCell className="py-4">
                             <Badge variant="outline" className={
                               test.status === 'Pending' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
-                              test.status === 'Sample Collected' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' :
-                              'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                test.status === 'Sample Collected' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' :
+                                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                             }>
                               {test.status}
                             </Badge>
@@ -276,9 +276,9 @@ export default function LaboratoryDashboard() {
                           <TableCell className="text-right py-4">
                             <div className="flex justify-end gap-2">
                               {test.status === 'Pending' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() => handleUpdateStatus(test._id, 'Sample Collected')}
                                   className="shadow-sm hover:scale-105 transition-transform"
                                 >
@@ -286,8 +286,8 @@ export default function LaboratoryDashboard() {
                                 </Button>
                               )}
                               {(test.status === 'Sample Collected' || test.status === 'Pending') && (
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   className="bg-emerald-600 hover:bg-emerald-700 shadow-sm hover:scale-105 transition-transform text-white"
                                   onClick={() => {
                                     setSelectedTest(test);
@@ -299,9 +299,9 @@ export default function LaboratoryDashboard() {
                                 </Button>
                               )}
                               {test.status === 'Completed' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   className="text-xs font-medium text-emerald-600"
                                   onClick={() => {
                                     setSelectedTest(test);
@@ -339,13 +339,13 @@ export default function LaboratoryDashboard() {
       {/* REPORT ENTRY / UPLOAD MODAL */}
       {selectedTest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-lg bg-card border border-border shadow-2xl rounded-2xl p-6 space-y-6 relative text-card-foreground"
           >
-            <button 
-              onClick={() => setSelectedTest(null)} 
+            <button
+              onClick={() => setSelectedTest(null)}
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
             >
               <X className="h-5 w-5" />
@@ -357,7 +357,7 @@ export default function LaboratoryDashboard() {
                 <h3 className="text-xl font-bold text-foreground">Complete Lab Report</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Patient: <span className="font-semibold text-foreground">{selectedTest.patientId?.name}</span> | 
+                Patient: <span className="font-semibold text-foreground">{selectedTest.patientId?.name}</span> |
                 Test: <span className="font-semibold text-foreground">{selectedTest.testName}</span>
               </p>
             </div>
@@ -365,8 +365,8 @@ export default function LaboratoryDashboard() {
             <div className="space-y-4 text-sm">
               <div className="space-y-2">
                 <Label htmlFor="resultNotes">Test Findings & Results Notes</Label>
-                <Textarea 
-                  id="resultNotes" 
+                <Textarea
+                  id="resultNotes"
                   rows={4}
                   placeholder="Enter detailed laboratory findings (e.g. Hemoglobin: 13.8 g/dL, Total Leukocyte Count: 6800 /cu mm - All parameters normal)"
                   value={resultNotes}
@@ -377,11 +377,11 @@ export default function LaboratoryDashboard() {
 
               <div className="space-y-2">
                 <Label htmlFor="pdfFile">Upload Report PDF Document</Label>
-                <Input 
-                  id="pdfFile" 
-                  type="file" 
-                  accept="application/pdf,image/*" 
-                  onChange={handleFileUpload} 
+                <Input
+                  id="pdfFile"
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={handleFileUpload}
                   className="bg-background/50 cursor-pointer text-xs"
                 />
                 {pdfFileName && (
@@ -391,9 +391,9 @@ export default function LaboratoryDashboard() {
                       <span>Uploaded: <strong>{pdfFileName}</strong></span>
                     </div>
                     {pdfReportUrl && (
-                      <a 
-                        href={pdfReportUrl} 
-                        target="_blank" 
+                      <a
+                        href={pdfReportUrl}
+                        target="_blank"
                         rel="noreferrer"
                         className="underline text-xs font-semibold hover:text-emerald-700"
                       >
@@ -407,7 +407,7 @@ export default function LaboratoryDashboard() {
 
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => setSelectedTest(null)}>Cancel</Button>
-              <Button 
+              <Button
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 disabled={updating || !resultNotes.trim()}
                 onClick={() => handleUpdateStatus(selectedTest._id, 'Completed', { resultNotes, pdfReportUrl })}
