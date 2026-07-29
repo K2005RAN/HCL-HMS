@@ -84,7 +84,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                 email: user.email
             },
             JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+            { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
         );
 
         // Record successful login in background (non-blocking for faster login response)
