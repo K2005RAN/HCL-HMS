@@ -597,18 +597,58 @@ export default function ConsultationView() {
                     <div className="mt-6 pt-4 border-t border-border">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Ordered Lab Tests for Patient</h4>
                       {patientLabTests.length > 0 ? (
-                        <div className="space-y-2">
-                          {patientLabTests.map(t => (
-                            <div key={t._id} className="p-3 rounded-lg bg-muted/30 border border-border flex justify-between items-center text-sm">
-                              <div>
-                                <span className="font-bold text-foreground">{t.testName}</span>
-                                <span className="text-xs text-muted-foreground ml-2">({t.category})</span>
+                        <div className="space-y-3">
+                          {patientLabTests.map(t => {
+                            const isCompleted = t.status === 'Completed';
+                            const hasReport = !!t.pdfReportUrl;
+
+                            return (
+                              <div key={t._id} className="p-3.5 rounded-xl bg-muted/30 border border-border/60 space-y-2 text-sm">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <div>
+                                    <span className="font-extrabold text-foreground text-base">{t.testName}</span>
+                                    <span className="text-xs text-muted-foreground ml-2 font-medium">({t.category})</span>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className={
+                                      isCompleted
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold px-2.5 py-0.5'
+                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-bold px-2.5 py-0.5'
+                                    }>
+                                      {isCompleted ? 'Completed' : 'Pending Lab Results'}
+                                    </Badge>
+                                  </div>
+                                </div>
+
+                                {t.remarks && (
+                                  <p className="text-xs text-muted-foreground italic">
+                                    Doctor Remarks: {t.remarks}
+                                  </p>
+                                )}
+
+                                {t.resultNotes && (
+                                  <div className="p-2.5 rounded-lg bg-background border border-border/40 text-xs">
+                                    <span className="font-bold text-foreground block mb-0.5">Lab Findings / Notes:</span>
+                                    <p className="text-muted-foreground whitespace-pre-wrap">{t.resultNotes}</p>
+                                  </div>
+                                )}
+
+                                {hasReport && (
+                                  <div className="pt-1 flex items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => openPdfReport(t.pdfReportUrl)}
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg gap-1.5 shadow-sm"
+                                    >
+                                      <FileText className="h-4 w-4" /> View Uploaded PDF Report
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
-                              <Badge variant={t.status === 'Completed' ? 'default' : 'secondary'}>
-                                {t.status}
-                              </Badge>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">No lab tests ordered for this patient yet.</p>
