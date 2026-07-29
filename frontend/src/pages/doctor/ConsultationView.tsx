@@ -36,13 +36,19 @@ export default function ConsultationView() {
   const [selectedPresetTest, setSelectedPresetTest] = useState('');
   const [labTestInput, setLabTestInput] = useState({ testName: '', category: 'Hematology', remarks: '' });
   const [orderingLab, setOrderingLab] = useState(false);
+  const [activePdfPreviewUrl, setActivePdfPreviewUrl] = useState<string | null>(null);
 
   const fetchPatientLabTests = async (patientIdStr: string) => {
     try {
       const res = await axios.get(`${API_BASE_URL}/api/lab/patient/${patientIdStr}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPatientLabTests(res.data);
+      const list = res.data || [];
+      setPatientLabTests(list);
+      const completedWithPdf = list.find((t: any) => t.status === 'Completed' && t.pdfReportUrl);
+      if (completedWithPdf && !activePdfPreviewUrl) {
+        setActivePdfPreviewUrl(completedWithPdf.pdfReportUrl);
+      }
     } catch (err) {
       console.error("Failed to fetch lab tests for patient", err);
     }
@@ -594,8 +600,8 @@ export default function ConsultationView() {
                     </Button>
 
                     {/* Patient's Lab Test History */}
-                    <div className="mt-6 pt-4 border-t border-border">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Ordered Lab Tests for Patient</h4>
+                    <div className="mt-6 pt-4 border-t border-border space-y-5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ordered Lab Tests for Patient</h4>
                       {patientLabTests.length > 0 ? (
                         <div className="space-y-3">
                           {patientLabTests.map(t => {
@@ -635,14 +641,23 @@ export default function ConsultationView() {
                                 )}
 
                                 {hasReport && (
-                                  <div className="pt-1 flex items-center gap-2">
+                                  <div className="pt-1 flex flex-wrap items-center gap-2">
                                     <Button
                                       type="button"
                                       size="sm"
-                                      onClick={() => openPdfReport(t.pdfReportUrl)}
+                                      onClick={() => setActivePdfPreviewUrl(t.pdfReportUrl)}
                                       className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg gap-1.5 shadow-sm"
                                     >
-                                      <FileText className="h-4 w-4" /> View Uploaded PDF Report
+                                      <FileText className="h-4 w-4" /> Preview Inline PDF
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openPdfReport(t.pdfReportUrl)}
+                                      className="text-xs font-semibold rounded-lg gap-1.5"
+                                    >
+                                      <Printer className="h-3.5 w-3.5" /> Open Full Window
                                     </Button>
                                   </div>
                                 )}
@@ -653,6 +668,86 @@ export default function ConsultationView() {
                       ) : (
                         <p className="text-xs text-muted-foreground">No lab tests ordered for this patient yet.</p>
                       )}
+
+                      {/* Embedded Inline PDF Viewer (Fills white space area dynamically) */}
+                      {activePdfPreviewUrl && (
+                        <div className="p-4 rounded-xl bg-background border border-border/80 shadow-md space-y-3">
+                          <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                            <span className="font-bold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                              <FileText className="h-4 w-4" /> Live PDF Lab Report Viewer
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openPdfReport(activePdfPreviewUrl)}
+                                className="text-xs h-7 rounded-lg"
+                              >
+                                Full Window
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setActivePdfPreviewUrl(null)}
+                                className="text-xs h-7 rounded-lg text-muted-foreground hover:text-foreground"
+                              >
+                                Close Preview
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="w-full h-[360px] rounded-lg border bg-slate-950/5 overflow-hidden">
+                            {activePdfPreviewUrl.startsWith('data:') ? (
+                              <iframe
+                                src={activePdfPreviewUrl}
+                                title="Embedded PDF Report Viewer"
+                                className="w-full h-full border-0"
+                              />
+                            ) : (
+                              <object
+                                data={activePdfPreviewUrl}
+                                type="application/pdf"
+                                className="w-full h-full border-0"
+                              >
+                                <iframe src={activePdfPreviewUrl} className="w-full h-full border-0" title="PDF Viewer" />
+                              </object>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Standard Clinical Reference Ranges Guide (Eliminates remaining white space) */}
+                      <div className="pt-4 border-t border-border/50 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Standard Clinical Reference Ranges Guide</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
+                            <span className="font-bold text-foreground block">Hemoglobin (Hb)</span>
+                            <p className="text-muted-foreground text-[11px]">13.5 - 17.5 g/dL (M) | 12.0 - 15.5 g/dL (F)</p>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
+                            <span className="font-bold text-foreground block">TLC / WBC Count</span>
+                            <p className="text-muted-foreground text-[11px]">4,000 - 11,000 /cu mm</p>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
+                            <span className="font-bold text-foreground block">Fasting Blood Sugar (FBS)</span>
+                            <p className="text-muted-foreground text-[11px]">70 - 99 mg/dL (Normal)</p>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
+                            <span className="font-bold text-foreground block">Platelet Count</span>
+                            <p className="text-muted-foreground text-[11px]">1.5 - 4.5 Lakhs /cu mm</p>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
+                            <span className="font-bold text-foreground block">Serum Creatinine</span>
+                            <p className="text-muted-foreground text-[11px]">0.7 - 1.3 mg/dL</p>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
+                            <span className="font-bold text-foreground block">Total Cholesterol</span>
+                            <p className="text-muted-foreground text-[11px]">&lt; 200 mg/dL (Desirable)</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
