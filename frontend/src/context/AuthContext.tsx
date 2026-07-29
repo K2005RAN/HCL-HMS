@@ -27,8 +27,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 4 Hours Session Timeout in milliseconds
-const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000;
+// 24 Hours Session Timeout in milliseconds (matches JWT token lifetime)
+const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -61,10 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (storedToken) {
       const now = Date.now();
-      const loginTimestamp = storedLoginTime ? parseInt(storedLoginTime, 10) : 0;
+      let loginTimestamp = storedLoginTime ? parseInt(storedLoginTime, 10) : 0;
 
-      // Auto logout if login timestamp is missing or session exceeded 4 hours
-      if (!loginTimestamp || (now - loginTimestamp > SESSION_TIMEOUT_MS)) {
+      // If loginTime was missing, auto-initialize it instead of logging out
+      if (!loginTimestamp) {
+        loginTimestamp = now;
+        localStorage.setItem('loginTime', now.toString());
+      }
+
+      // Auto logout ONLY if session timestamp exceeds 24 hours
+      if (now - loginTimestamp > SESSION_TIMEOUT_MS) {
         logout();
         setIsInitialized(true);
         return;
@@ -93,8 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(err => {
         console.error('Failed to refresh user profile from backend:', err);
-        // Force logout if token is expired or unauthorized
-        if (err.response?.status === 401 || err.response?.status === 403) {
+        // Force logout ONLY if token is explicitly expired/unauthorized (401)
+        if (err.response?.status === 401) {
           logout();
         }
       });
@@ -102,14 +108,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsInitialized(true);
   }, []);
 
-  // Global Axios interceptor for automatic logout on 401 Unauthorized / 403 Forbidden
+  // Global Axios interceptor for automatic logout ONLY on 401 Unauthorized (Expired JWT)
+  // NEVER log out on 403 Forbidden (Permission Denied) or auth/login requests!
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          // Do not trigger logout for login attempts
-          if (!error.config?.url?.includes('/api/auth/login')) {
+        if (error.response && error.response.status === 401) {
+          const requestUrl = error.config?.url || '';
+          const isAuthRoute = requestUrl.includes('/api/auth/login') || requestUrl.includes('/api/auth/register');
+          if (!isAuthRoute) {
+            console.warn('Session expired (401). Logging out...');
             logout();
           }
         }
