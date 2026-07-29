@@ -475,7 +475,6 @@ export default function PatientDashboard() {
             </CardContent>
           </Card>
         </motion.div>
-      </div>
     </motion.div>
   );
 }
