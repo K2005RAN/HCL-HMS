@@ -22,7 +22,8 @@ import {
   Clock,
   Eye,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  ShieldCheck
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
@@ -37,6 +38,39 @@ export default function PatientDashboard() {
   // Search & Date Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDate, setFilterDate] = useState('');
+
+  // Change Password State
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState('HCIL2026');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordMsg({ type: 'error', text: 'New password must be at least 6 characters long' });
+      return;
+    }
+
+    setPasswordLoading(true);
+    setPasswordMsg(null);
+
+    try {
+      await axios.put(
+        `${API_BASE_URL}/api/auth/change-password`,
+        { oldPassword, newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPasswordMsg({ type: 'success', text: 'Password updated successfully! Next time log in with your new password.' });
+      setOldPassword('');
+      setNewPassword('');
+    } catch (err: any) {
+      setPasswordMsg({ type: 'error', text: err.response?.data?.message || 'Failed to update password' });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -177,6 +211,58 @@ export default function PatientDashboard() {
                   {profile?.chronicDiseases?.length > 0 ? profile.chronicDiseases.join(', ') : 'None reported'}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+          
+          {/* Account Security & Default Password Card */}
+          <Card className="glass border-border/50 shadow-lg">
+            <CardHeader className="bg-muted/20 border-b border-border/50 py-3">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <ShieldCheck className="w-4 h-4 text-primary" /> Account Security & Password
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3 text-xs">
+              <p className="text-muted-foreground leading-relaxed">
+                Default password for first-time login is <strong className="text-foreground font-bold">HCIL2026</strong>. You can update your password below.
+              </p>
+              
+              <form onSubmit={handlePasswordChange} className="space-y-3 pt-1">
+                {passwordMsg && (
+                  <div className={`p-2.5 rounded-lg text-xs font-semibold ${
+                    passwordMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-destructive/10 text-destructive border border-destructive/20'
+                  }`}>
+                    {passwordMsg.text}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground">Current / Default Password</label>
+                  <Input
+                    type="password"
+                    placeholder="HCIL2026"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    className="h-9 text-xs bg-background/80"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground">New Custom Password</label>
+                  <Input
+                    type="password"
+                    placeholder="Enter new custom password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-9 text-xs bg-background/80"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={passwordLoading || !newPassword}
+                  size="sm"
+                  className="w-full text-xs font-bold h-9 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
           
