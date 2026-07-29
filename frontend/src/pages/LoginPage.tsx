@@ -140,11 +140,11 @@ export default function LoginPage() {
                   </select>
                 </div>
                 <div className="space-y-2.5">
-                  <Label htmlFor="email" className="text-slate-700 dark:text-slate-300 font-semibold text-sm">Email Address</Label>
+                  <Label htmlFor="email" className="text-slate-700 dark:text-slate-300 font-semibold text-sm">Email / Mobile / Patient ID</Label>
                   <Input 
                     id="email" 
-                    type="email" 
-                    placeholder="e.g. doctor@heidelberg.in" 
+                    type="text" 
+                    placeholder="e.g. email, phone, or PAT-0002" 
                     required 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

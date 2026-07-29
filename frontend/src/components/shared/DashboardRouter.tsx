@@ -26,6 +26,7 @@ export default function DashboardRouter() {
       // Staff is now restricted to appointments and attendance. Defaulting to appointments.
       return <Navigate to="/appointments" replace />;
     case 'patient':
+    case 'employee':
       return <Navigate to="/patient-dashboard" replace />;
     default:
       return <Navigate to="/login" replace />;

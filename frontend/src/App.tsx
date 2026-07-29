@@ -77,7 +77,7 @@ function App() {
                 <Route path="user-management" element={<UserManagement />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['patient']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['patient', 'employee']} />}>
                 <Route path="patient-dashboard" element={<PatientDashboard />} />
               </Route>
             </Route>
