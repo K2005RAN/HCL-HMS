@@ -20,7 +20,8 @@ export default function ConsultationHistoryView() {
   useEffect(() => {
     const fetchRecord = async () => {
       try {
-        const endpoint = user?.role === 'patient' 
+        const userRoleLower = (user?.role || '').toLowerCase();
+        const endpoint = (userRoleLower === 'patient' || userRoleLower === 'employee')
           ? `${API_BASE_URL}/api/patient/history/${recordId}`
           : `${API_BASE_URL}/api/doctor/history/${recordId}`;
           

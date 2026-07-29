@@ -183,47 +183,58 @@ export default function PatientDashboard() {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Side: Medical Profile Summary */}
-        <motion.div variants={itemVariants} className="md:col-span-1 space-y-6">
-          <Card className="glass border-border/50 shadow-lg">
-            <CardHeader className="bg-muted/20 border-b border-border/50">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="w-5 h-5 text-emerald-500" /> Medical Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Droplet className="w-4 h-4 text-rose-500" /> Blood Group
-                </span>
-                <span className="font-semibold text-foreground">{profile?.bloodGroup || 'AB+'}</span>
-              </div>
-              <div className="border-b border-border/50 pb-3 space-y-2">
-                <span className="text-muted-foreground block text-sm font-semibold">Allergies</span>
-                <p className="font-medium text-sm">
-                  {profile?.allergies?.length > 0 ? profile.allergies.join(', ') : 'No known allergies'}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <span className="text-muted-foreground block text-sm font-semibold">Chronic Conditions</span>
-                <p className="font-medium text-sm">
-                  {profile?.chronicDiseases?.length > 0 ? profile.chronicDiseases.join(', ') : 'None reported'}
-                </p>
-              </div>
-            </CardContent>
+      {/* Top Cards: Medical Profile & Account Security */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left: Medical Profile */}
+        <motion.div variants={itemVariants}>
+          <Card className="glass border-border/50 shadow-lg h-full flex flex-col justify-between">
+            <div>
+              <CardHeader className="bg-muted/20 border-b border-border/50 py-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-emerald-500" /> Medical Profile
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                  <span className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <Droplet className="w-4 h-4 text-rose-500" /> Blood Group
+                  </span>
+                  <span className="font-extrabold text-foreground text-base">{profile?.bloodGroup || 'AB+'}</span>
+                </div>
+                <div className="border-b border-border/50 pb-3 space-y-1">
+                  <span className="text-muted-foreground block text-xs font-bold uppercase tracking-wider">Allergies</span>
+                  <p className="font-semibold text-sm">
+                    {profile?.allergies?.length > 0 ? profile.allergies.join(', ') : 'No known allergies'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-muted-foreground block text-xs font-bold uppercase tracking-wider">Chronic Conditions</span>
+                  <p className="font-semibold text-sm">
+                    {profile?.chronicDiseases?.length > 0 ? profile.chronicDiseases.join(', ') : 'None reported'}
+                  </p>
+                </div>
+              </CardContent>
+            </div>
+            <div className="p-4 bg-primary/5 border-t border-primary/10 rounded-b-xl">
+              <p className="text-xs text-muted-foreground flex items-center gap-2 font-medium">
+                <Stethoscope className="h-4 w-4 text-primary shrink-0" />
+                Heidelberg OHC Center: Routine checkups & emergency medical care.
+              </p>
+            </div>
           </Card>
-          
-          {/* Account Security & Default Password Card */}
-          <Card className="glass border-border/50 shadow-lg">
+        </motion.div>
+
+        {/* Right: Account Security & Default Password Card */}
+        <motion.div variants={itemVariants}>
+          <Card className="glass border-border/50 shadow-lg h-full">
             <CardHeader className="bg-muted/20 border-b border-border/50 py-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                <ShieldCheck className="w-4 h-4 text-primary" /> Account Security & Password
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <ShieldCheck className="w-5 h-5 text-primary" /> Account Security & Password
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-3 text-xs">
+            <CardContent className="p-5 space-y-3 text-xs">
               <p className="text-muted-foreground leading-relaxed">
-                Default password for first-time login is <strong className="text-foreground font-bold">HCIL2026</strong>. You can update your password below.
+                Default password for first-time login is <strong className="text-foreground font-extrabold">HCIL2026</strong>. You can update your password below.
               </p>
               
               <form onSubmit={handlePasswordChange} className="space-y-3 pt-1">
@@ -234,52 +245,44 @@ export default function PatientDashboard() {
                     {passwordMsg.text}
                   </div>
                 )}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-muted-foreground">Current / Default Password</label>
-                  <Input
-                    type="password"
-                    placeholder="HCIL2026"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    className="h-9 text-xs bg-background/80"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-muted-foreground">New Custom Password</label>
-                  <Input
-                    type="password"
-                    placeholder="Enter new custom password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="h-9 text-xs bg-background/80"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-muted-foreground">Current / Default Password</label>
+                    <Input
+                      type="password"
+                      placeholder="HCIL2026"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="h-10 text-xs bg-background/80 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-muted-foreground">New Custom Password</label>
+                    <Input
+                      type="password"
+                      placeholder="Enter new custom password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="h-10 text-xs bg-background/80 rounded-xl"
+                    />
+                  </div>
                 </div>
                 <Button
                   type="submit"
                   disabled={passwordLoading || !newPassword}
                   size="sm"
-                  className="w-full text-xs font-bold h-9 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                  className="w-full text-xs font-bold h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-sm"
                 >
-                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                  {passwordLoading ? 'Updating...' : 'Update Account Password'}
                 </Button>
               </form>
             </CardContent>
           </Card>
-          
-          <Card className="glass border-border/50 shadow-lg bg-primary/5 border-primary/20">
-            <CardContent className="p-6 space-y-2">
-              <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                <Stethoscope className="h-5 w-5" /> Heidelberg OHC Center
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                For routine checkups or emergency consultations, visit the Occupational Health Center or contact clinic staff.
-              </p>
-            </CardContent>
-          </Card>
         </motion.div>
+      </div>
 
-        {/* Right Side: Consultation Visit Records Table */}
-        <motion.div variants={itemVariants} className="md:col-span-2 space-y-4">
+      {/* Full Width Consultation Visit Records Table */}
+      <motion.div variants={itemVariants} className="space-y-4">
           {/* Search & Date Filter Bar */}
           <Card className="glass border-border/50 shadow-sm">
             <CardContent className="p-4 space-y-3">

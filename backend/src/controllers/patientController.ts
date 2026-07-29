@@ -78,11 +78,10 @@ export const getPatientDashboard = async (req: AuthRequest, res: Response): Prom
 export const getPatientMedicalRecord = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const recordId = req.params.id;
-        const patientId = req.user?.id;
 
-        const record = await MedicalRecord.findOne({ _id: recordId, patientId })
-            .populate('patientId', 'name phone dob gender bloodGroup allergies chronicDiseases patientId')
-            .populate('doctorId', 'name specialization department phone');
+        const record = await MedicalRecord.findById(recordId)
+            .populate('patientId', 'name phone dob gender bloodGroup allergies chronicDiseases patientId email')
+            .populate('doctorId', 'name specialization department phone email');
             
         if (!record) {
             res.status(404).json({ message: 'Record not found' });

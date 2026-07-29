@@ -53,6 +53,9 @@ function App() {
                 <Route path="doctor-dashboard" element={<DoctorDashboard />} />
                 <Route path="doctor-history" element={<DoctorHistoryPage />} />
                 <Route path="consultation/:appointmentId" element={<ConsultationView />} />
+              </Route>
+              
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'doctor', 'patient', 'employee', 'staff']} />}>
                 <Route path="consultation-history/:recordId" element={<ConsultationHistoryView />} />
               </Route>
               
