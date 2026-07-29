@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Doctor from '../models/Doctor';
 import Appointment from '../models/Appointment';
 import MedicalRecord from '../models/MedicalRecord';
+import LabTest from '../models/LabTest';
 import { AuthRequest } from '../middlewares/authMiddleware';
 
 // @route   GET /api/doctor/dashboard
@@ -183,9 +184,39 @@ export const getDoctorHistory = async (req: AuthRequest, res: Response): Promise
         const history = await MedicalRecord.find(query)
             .populate('patientId', 'name phone email dob gender patientId bloodGroup address emergencyContact chronicDiseases allergies')
             .populate('doctorId', 'name specialization department phone email')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
-        res.json(history);
+        // Fetch all lab tests for patients in this history list
+        const patientIds = history.map((r: any) => r.patientId?._id).filter(Boolean);
+        const allLabTests = await LabTest.find({ patientId: { $in: patientIds } }).lean();
+
+        const historyWithLabStatus = history.map((record: any) => {
+            const pId = record.patientId?._id?.toString();
+            const pTests = allLabTests.filter((lt: any) => lt.patientId?.toString() === pId);
+
+            let labStatus = 'No Record';
+            if (pTests.length > 0) {
+                const hasCompleted = pTests.some((lt: any) => lt.status === 'Completed' || !!lt.pdfReportUrl);
+                const hasPending = pTests.some((lt: any) => lt.status === 'Pending' || lt.status === 'Sample Collected');
+                
+                if (hasCompleted) {
+                    labStatus = 'Completed';
+                } else if (hasPending) {
+                    labStatus = 'Pending';
+                }
+            } else if (Array.isArray(record.labRequests) && record.labRequests.length > 0) {
+                labStatus = 'Pending';
+            }
+
+            return {
+                ...record,
+                labStatus,
+                labTestsCount: pTests.length || (record.labRequests?.length || 0)
+            };
+        });
+
+        res.json(historyWithLabStatus);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error', error });

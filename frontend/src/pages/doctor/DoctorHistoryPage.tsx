@@ -336,12 +336,16 @@ export default function DoctorHistoryPage() {
 
                           {/* Lab Status */}
                           <TableCell className="py-4">
-                            {Array.isArray(record.labRequests) && record.labRequests.length > 0 ? (
-                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold px-2 py-0">
-                                <TestTube className="h-3 w-3 mr-1" /> {record.labRequests.length} Tests Ordered
+                            {record.labStatus === 'Completed' ? (
+                              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2.5 py-0.5">
+                                <CheckCircle className="h-3 w-3 mr-1 text-emerald-500" /> Completed
+                              </Badge>
+                            ) : record.labStatus === 'Pending' ? (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2.5 py-0.5">
+                                <Clock className="h-3 w-3 mr-1 text-amber-500" /> Pending
                               </Badge>
                             ) : (
-                              <span className="text-xs text-muted-foreground">--</span>
+                              <span className="text-xs text-muted-foreground font-medium pl-1">No Record</span>
                             )}
                           </TableCell>
 
