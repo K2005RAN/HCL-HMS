@@ -4,9 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TestTube, FileUp, CheckCircle, Search, User, Stethoscope, Phone, X, FileCheck, FileText, Download, Activity } from 'lucide-react';
+import { TestTube, FileUp, CheckCircle, Search, User, Stethoscope, Phone, X, FileCheck, Activity, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -20,9 +19,8 @@ export default function LaboratoryDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal state for uploading report / findings
+  // Modal state for uploading report
   const [selectedTest, setSelectedTest] = useState<any>(null);
-  const [resultNotes, setResultNotes] = useState('');
   const [pdfReportUrl, setPdfReportUrl] = useState('');
   const [pdfFileName, setPdfFileName] = useState('');
   const [updating, setUpdating] = useState(false);
@@ -74,10 +72,10 @@ export default function LaboratoryDashboard() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert(`Status updated to ${status}!`);
+      alert(`Report completed and published successfully!`);
       setSelectedTest(null);
-      setResultNotes('');
       setPdfReportUrl('');
+      setPdfFileName('');
       fetchTests();
     } catch (err: any) {
       console.error("Failed to update test status", err);
@@ -87,8 +85,7 @@ export default function LaboratoryDashboard() {
     }
   };
 
-  const pendingCount = tests.filter(t => t.status === 'Pending').length;
-  const processingCount = tests.filter(t => t.status === 'Sample Collected').length;
+  const pendingCount = tests.filter(t => t.status === 'Pending' || t.status === 'Sample Collected').length;
   const completedCount = tests.filter(t => t.status === 'Completed').length;
 
   const filteredTests = tests.filter(t => {
@@ -116,42 +113,29 @@ export default function LaboratoryDashboard() {
           <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
             Laboratory Dashboard
           </h2>
-          <p className="text-muted-foreground mt-1 text-lg">Manage patient test requests, sample collections, and upload clinical reports.</p>
+          <p className="text-muted-foreground mt-1 text-lg">Upload completed clinical reports for pending lab test requests.</p>
         </motion.div>
         <motion.div variants={itemVariants}>
-          <Button onClick={() => navigate('/attendance')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md">
+          <Button onClick={() => navigate('/attendance')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md rounded-xl">
             <Activity className="w-4 h-4" /> Mark Attendance / Sign Off
           </Button>
         </motion.div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      {/* KPI Stats Cards */}
+      <div className="grid gap-6 md:grid-cols-2">
         <motion.div variants={itemVariants}>
           <Card className="glass relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-amber-500/20">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <CardTitle className="text-sm font-semibold text-amber-600 dark:text-amber-500">Pending Collections</CardTitle>
+              <CardTitle className="text-sm font-semibold text-amber-600 dark:text-amber-500">Pending Lab Tests</CardTitle>
               <div className="p-2 rounded-xl bg-amber-500/20">
-                <TestTube className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-500" />
               </div>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="text-3xl font-extrabold tracking-tight text-amber-600 dark:text-amber-500">{pendingCount}</div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Card className="glass relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-blue-500/20">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <CardTitle className="text-sm font-semibold text-blue-600 dark:text-blue-500">Processing / Sample Collected</CardTitle>
-              <div className="p-2 rounded-xl bg-blue-500/20">
-                <TestTube className="h-4 w-4 text-blue-600 dark:text-blue-500" />
-              </div>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="text-3xl font-extrabold tracking-tight text-blue-600 dark:text-blue-500">{processingCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">Awaiting PDF report upload</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -162,11 +146,12 @@ export default function LaboratoryDashboard() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <CardTitle className="text-sm font-semibold text-emerald-600 dark:text-emerald-500">Completed Reports</CardTitle>
               <div className="p-2 rounded-xl bg-emerald-500/20">
-                <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
+                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
               </div>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="text-3xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-500">{completedCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">Reports published & available</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -209,6 +194,7 @@ export default function LaboratoryDashboard() {
                       const p = test.patientId;
                       const d = test.doctorId;
                       const age = p?.dob ? new Date().getFullYear() - new Date(p.dob).getFullYear() : null;
+                      const isCompleted = test.status === 'Completed';
 
                       return (
                         <motion.tr
@@ -265,51 +251,40 @@ export default function LaboratoryDashboard() {
 
                           <TableCell className="py-4">
                             <Badge variant="outline" className={
-                              test.status === 'Pending' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
-                                test.status === 'Sample Collected' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' :
-                                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                              isCompleted
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold'
+                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-bold'
                             }>
-                              {test.status}
+                              {isCompleted ? 'Completed' : 'Pending'}
                             </Badge>
                           </TableCell>
 
                           <TableCell className="text-right py-4">
                             <div className="flex justify-end gap-2">
-                              {test.status === 'Pending' && (
+                              {!isCompleted ? (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => handleUpdateStatus(test._id, 'Sample Collected')}
-                                  className="shadow-sm hover:scale-105 transition-transform"
-                                >
-                                  Collect Sample
-                                </Button>
-                              )}
-                              {(test.status === 'Sample Collected' || test.status === 'Pending') && (
-                                <Button
-                                  size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-700 shadow-sm hover:scale-105 transition-transform text-white"
+                                  className="bg-emerald-600 hover:bg-emerald-700 shadow-md hover:scale-105 transition-all text-white font-bold rounded-xl"
                                   onClick={() => {
                                     setSelectedTest(test);
-                                    setResultNotes(test.resultNotes || '');
                                     setPdfReportUrl(test.pdfReportUrl || '');
+                                    setPdfFileName('');
                                   }}
                                 >
-                                  <FileUp className="h-4 w-4 mr-1.5" /> Complete Report
+                                  <FileUp className="h-4 w-4 mr-1.5" /> Upload Report
                                 </Button>
-                              )}
-                              {test.status === 'Completed' && (
+                              ) : (
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="text-xs font-medium text-emerald-600"
+                                  className="text-xs font-semibold text-emerald-600 hover:bg-emerald-500/10 rounded-xl"
                                   onClick={() => {
                                     setSelectedTest(test);
-                                    setResultNotes(test.resultNotes || '');
                                     setPdfReportUrl(test.pdfReportUrl || '');
+                                    setPdfFileName('');
                                   }}
                                 >
-                                  View / Edit Report
+                                  View / Edit PDF Report
                                 </Button>
                               )}
                             </div>
@@ -336,13 +311,13 @@ export default function LaboratoryDashboard() {
         </Card>
       </motion.div>
 
-      {/* REPORT ENTRY / UPLOAD MODAL */}
+      {/* DIRECT REPORT UPLOAD MODAL */}
       {selectedTest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-lg bg-card border border-border shadow-2xl rounded-2xl p-6 space-y-6 relative text-card-foreground"
+            className="w-full max-w-md bg-card border border-border shadow-2xl rounded-2xl p-6 space-y-6 relative text-card-foreground"
           >
             <button
               onClick={() => setSelectedTest(null)}
@@ -354,7 +329,7 @@ export default function LaboratoryDashboard() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <TestTube className="h-5 w-5 text-primary" />
-                <h3 className="text-xl font-bold text-foreground">Complete Lab Report</h3>
+                <h3 className="text-xl font-bold text-foreground">Upload Lab Report PDF</h3>
               </div>
               <p className="text-sm text-muted-foreground">
                 Patient: <span className="font-semibold text-foreground">{selectedTest.patientId?.name}</span> |
@@ -364,55 +339,48 @@ export default function LaboratoryDashboard() {
 
             <div className="space-y-4 text-sm">
               <div className="space-y-2">
-                <Label htmlFor="resultNotes">Test Findings & Results Notes</Label>
-                <Textarea
-                  id="resultNotes"
-                  rows={4}
-                  placeholder="Enter detailed laboratory findings (e.g. Hemoglobin: 13.8 g/dL, Total Leukocyte Count: 6800 /cu mm - All parameters normal)"
-                  value={resultNotes}
-                  onChange={e => setResultNotes(e.target.value)}
-                  className="bg-background/50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pdfFile">Upload Report PDF Document</Label>
+                <Label htmlFor="pdfFile" className="font-semibold">Upload Report PDF Document</Label>
                 <Input
                   id="pdfFile"
                   type="file"
                   accept="application/pdf,image/*"
                   onChange={handleFileUpload}
-                  className="bg-background/50 cursor-pointer text-xs"
+                  className="bg-background/50 cursor-pointer text-xs h-11 border-border/80 focus:ring-primary/40 rounded-xl"
                 />
                 {pdfFileName && (
-                  <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <FileCheck className="h-4 w-4 shrink-0" />
-                      <span>Uploaded: <strong>{pdfFileName}</strong></span>
+                  <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 font-medium">
+                    <div className="flex items-center gap-1.5">
+                      <FileCheck className="h-4 w-4 shrink-0 text-emerald-500" />
+                      <span>Selected: <strong>{pdfFileName}</strong></span>
                     </div>
-                    {pdfReportUrl && (
-                      <a
-                        href={pdfReportUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline text-xs font-semibold hover:text-emerald-700"
-                      >
-                        Preview PDF
-                      </a>
-                    )}
+                  </div>
+                )}
+                {selectedTest.pdfReportUrl && !pdfFileName && (
+                  <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 font-medium">
+                    <span>Existing report uploaded</span>
+                    <a
+                      href={selectedTest.pdfReportUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline font-bold hover:text-emerald-700"
+                    >
+                      View Current PDF
+                    </a>
                   </div>
                 )}
               </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => setSelectedTest(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setSelectedTest(null)} className="rounded-xl">
+                Cancel
+              </Button>
               <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                disabled={updating || !resultNotes.trim()}
-                onClick={() => handleUpdateStatus(selectedTest._id, 'Completed', { resultNotes, pdfReportUrl })}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md"
+                disabled={updating || (!pdfReportUrl && !selectedTest.pdfReportUrl)}
+                onClick={() => handleUpdateStatus(selectedTest._id, 'Completed', { pdfReportUrl: pdfReportUrl || selectedTest.pdfReportUrl })}
               >
-                {updating ? 'Saving...' : 'Submit & Mark Completed'}
+                {updating ? 'Uploading...' : 'Upload & Mark Completed'}
               </Button>
             </div>
           </motion.div>
