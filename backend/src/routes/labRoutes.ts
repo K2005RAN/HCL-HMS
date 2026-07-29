@@ -8,7 +8,7 @@ router.use(protect);
 
 router.post('/order', authorize('doctor', 'admin'), orderLabTest);
 router.get('/tests', authorize('lab', 'staff', 'admin', 'doctor'), getLabTests);
-router.get('/patient/:patientId', authorize('doctor', 'lab', 'staff', 'admin', 'patient'), getPatientLabTests);
+router.get('/patient/:patientId', authorize('doctor', 'lab', 'staff', 'admin', 'patient', 'employee'), getPatientLabTests);
 router.put('/tests/:id/status', authorize('lab', 'staff', 'admin'), updateTestStatus);
 
 export default router;

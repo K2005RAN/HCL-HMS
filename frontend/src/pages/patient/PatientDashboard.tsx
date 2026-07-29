@@ -23,10 +23,12 @@ import {
   Eye,
   ChevronRight,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  Printer
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
+import { openPdfReport } from '@/lib/utils';
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
@@ -38,6 +40,9 @@ export default function PatientDashboard() {
   // Search & Date Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDate, setFilterDate] = useState('');
+
+  // Selected Visit Modal State
+  const [selectedVisitModal, setSelectedVisitModal] = useState<any | null>(null);
 
   // Change Password State
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -431,7 +436,7 @@ export default function PatientDashboard() {
                                 <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2.5 py-0.5">
                                   <Clock className="h-3 w-3 mr-1 text-amber-500" /> Pending
                                 </Badge>
-                              ) : (
+              ) : (
                                 <span className="text-xs text-muted-foreground font-medium pl-1">No Record</span>
                               )}
                             </TableCell>
@@ -441,7 +446,7 @@ export default function PatientDashboard() {
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={() => navigate(`/consultation-history/${record._id}`)}
+                                onClick={() => setSelectedVisitModal(record)}
                                 className="shadow-sm hover:scale-105 transition-all text-xs font-bold rounded-xl gap-1.5"
                               >
                                 <Eye className="h-3.5 w-3.5" /> View Details
@@ -475,6 +480,175 @@ export default function PatientDashboard() {
             </CardContent>
           </Card>
         </motion.div>
+
+      {/* Interactive Full Visit Details Modal for Patients & Employees */}
+      {selectedVisitModal && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-card border border-border/80 rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border/50 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-foreground">Full Consultation Record Details</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Visit Date: {new Date(selectedVisitModal.createdAt).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedVisitModal(null)}
+                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Doctor & Patient Information */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-muted/20 border border-border/40 text-xs">
+              <div className="space-y-1">
+                <span className="font-bold text-muted-foreground uppercase tracking-wider block text-[10px]">Attending Physician</span>
+                <p className="font-extrabold text-foreground text-sm flex items-center gap-1.5">
+                  <Stethoscope className="h-4 w-4 text-primary" /> Dr. {selectedVisitModal.doctorId?.name || 'OHC Medical Staff'}
+                </p>
+                <p className="text-muted-foreground">{selectedVisitModal.doctorId?.specialization || 'General Physician'} • {selectedVisitModal.doctorId?.department || 'OHC'}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="font-bold text-muted-foreground uppercase tracking-wider block text-[10px]">Patient Information</span>
+                <p className="font-extrabold text-foreground text-sm">
+                  {selectedVisitModal.patientId?.name || profile?.name || 'Patient'}
+                </p>
+                <p className="text-muted-foreground">ID: {selectedVisitModal.patientId?.patientId || profile?.patientId || '--'} | Blood Group: {selectedVisitModal.patientId?.bloodGroup || profile?.bloodGroup || '--'}</p>
+              </div>
+            </div>
+
+            {/* Vitals Summary */}
+            {selectedVisitModal.vitals && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Nurse Check-in Vitals</h4>
+                <div className="grid grid-cols-4 gap-3 text-center text-xs">
+                  <div className="p-3 rounded-xl bg-background border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">BP</span>
+                    <strong className="text-foreground text-sm font-extrabold">{selectedVisitModal.vitals.bp || '--'}</strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-background border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">Pulse</span>
+                    <strong className="text-foreground text-sm font-extrabold">{selectedVisitModal.vitals.pulse || '--'} bpm</strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-background border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">Weight</span>
+                    <strong className="text-foreground text-sm font-extrabold">{selectedVisitModal.vitals.weight || '--'} kg</strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-background border border-border/50">
+                    <span className="text-muted-foreground block text-[10px]">Temp</span>
+                    <strong className="text-foreground text-sm font-extrabold">{selectedVisitModal.vitals.temp || '--'} °F</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Diagnosis & Symptoms */}
+            <div className="space-y-2">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Diagnosis & Clinical Complaints</h4>
+              <div className="p-3.5 rounded-xl bg-background border border-border/50 space-y-1 text-sm">
+                <p className="font-extrabold text-foreground">{selectedVisitModal.diagnosis || 'General Consultation'}</p>
+                {Array.isArray(selectedVisitModal.symptoms) && selectedVisitModal.symptoms.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Symptoms: {selectedVisitModal.symptoms.join(', ')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Medicines & Prescriptions */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Prescribed Medicines</h4>
+                <Badge variant="outline" className={
+                  selectedVisitModal.pharmacyStatus === 'Dispensed'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-bold'
+                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-xs font-bold'
+                }>
+                  {selectedVisitModal.pharmacyStatus === 'Dispensed' ? 'Pharmacy: Dispensed & Billed' : 'Pharmacy: Pending Dispensing'}
+                </Badge>
+              </div>
+              {Array.isArray(selectedVisitModal.prescription) && selectedVisitModal.prescription.length > 0 ? (
+                <div className="border border-border/60 rounded-xl overflow-hidden text-xs">
+                  <table className="w-full text-left">
+                    <thead className="bg-muted/40 text-muted-foreground border-b border-border/50">
+                      <tr>
+                        <th className="p-3 font-semibold">Medicine Name</th>
+                        <th className="p-3 font-semibold">Dosage</th>
+                        <th className="p-3 font-semibold">Duration / Instructions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {selectedVisitModal.prescription.map((med: any, idx: number) => (
+                        <tr key={idx} className="bg-background">
+                          <td className="p-3 font-bold text-foreground">{med.medicineName}</td>
+                          <td className="p-3 text-muted-foreground">{med.dosage || '--'}</td>
+                          <td className="p-3 text-muted-foreground">{med.duration || med.instructions || '--'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic p-3 bg-muted/20 rounded-xl">No medicines prescribed for this visit.</p>
+              )}
+            </div>
+
+            {/* Lab Test Reports */}
+            {Array.isArray(selectedVisitModal.labTests) && selectedVisitModal.labTests.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Ordered Lab Test Reports</h4>
+                <div className="space-y-2">
+                  {selectedVisitModal.labTests.map((lt: any) => (
+                    <div key={lt._id} className="p-3 rounded-xl bg-muted/20 border border-border/50 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-extrabold text-foreground text-sm block">{lt.testName}</span>
+                        <span className="text-muted-foreground">Category: {lt.category} | Status: <strong className="text-foreground font-bold">{lt.status}</strong></span>
+                        {lt.resultNotes && <p className="text-muted-foreground italic mt-0.5">{lt.resultNotes}</p>}
+                      </div>
+                      {lt.pdfReportUrl && (
+                        <Button
+                          size="sm"
+                          onClick={() => openPdfReport(lt.pdfReportUrl)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 rounded-lg shrink-0"
+                        >
+                          <FileText className="h-3.5 w-3.5" /> View Uploaded PDF Report
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/50 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/consultation-history/${selectedVisitModal._id}`)}
+                className="w-full sm:w-auto text-xs font-bold rounded-xl gap-2"
+              >
+                <Printer className="h-4 w-4" /> Open Full Printable Prescription Sheet
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => setSelectedVisitModal(null)}
+                className="w-full sm:w-auto text-xs font-bold rounded-xl"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
