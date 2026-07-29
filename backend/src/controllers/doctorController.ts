@@ -181,8 +181,8 @@ export const getDoctorHistory = async (req: AuthRequest, res: Response): Promise
         }
 
         const history = await MedicalRecord.find(query)
-            .populate('patientId', 'name phone dob gender patientId bloodGroup')
-            .populate('doctorId', 'name specialization')
+            .populate('patientId', 'name phone email dob gender patientId bloodGroup address emergencyContact chronicDiseases allergies')
+            .populate('doctorId', 'name specialization department phone email')
             .sort({ createdAt: -1 });
 
         res.json(history);
