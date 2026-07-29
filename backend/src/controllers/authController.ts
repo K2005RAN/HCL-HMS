@@ -21,10 +21,11 @@ export const executeDatabaseWipe = async () => {
 };
 
 const getModelByRole = (role: string) => {
-    switch (role.toLowerCase()) {
+    switch ((role || '').toLowerCase()) {
         case 'admin': return Admin;
         case 'doctor': return Doctor;
         case 'patient': return Patient;
+        case 'employee': return Employee;
         case 'staff': return Staff;
         case 'lab': return LabUser;
         case 'pharmacy': return PharmacyUser;
@@ -36,28 +37,50 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     try {
         const { email, password, role } = req.body;
 
-        if (!role) {
-            res.status(400).json({ message: 'Role must be specified' });
-            return;
-        }
-
-        const Model = getModelByRole(role);
-        if (!Model) {
-            res.status(400).json({ message: 'Invalid role' });
-            return;
-        }
-
         const cleanEmail = typeof email === 'string' ? email.trim() : '';
         if (!cleanEmail) {
             res.status(400).json({ message: 'Email is required' });
             return;
         }
 
+        if (!password) {
+            res.status(400).json({ message: 'Password is required' });
+            return;
+        }
+
         const emailFilter = { email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } };
 
-        let user: any = await Model.findOne(emailFilter).lean();
-        if (!user && (role.toLowerCase() === 'lab' || role.toLowerCase() === 'pharmacy')) {
-            user = await Staff.findOne(emailFilter).lean();
+        let user: any = null;
+        let effectiveRole = (role || '').toLowerCase();
+
+        // 1. Check primary model for the requested role
+        if (effectiveRole) {
+            const PrimaryModel = getModelByRole(effectiveRole);
+            if (PrimaryModel) {
+                user = await PrimaryModel.findOne(emailFilter).lean();
+            }
+        }
+
+        // 2. If not found in primary model, search across all user collections
+        if (!user) {
+            const allRoleModels = [
+                { model: Admin, role: 'admin' },
+                { model: Doctor, role: 'doctor' },
+                { model: Patient, role: 'patient' },
+                { model: Staff, role: 'staff' },
+                { model: LabUser, role: 'lab' },
+                { model: PharmacyUser, role: 'pharmacy' },
+                { model: Employee, role: 'employee' }
+            ];
+
+            for (const item of allRoleModels) {
+                const candidate = await item.model.findOne(emailFilter).lean();
+                if (candidate) {
+                    user = candidate;
+                    effectiveRole = item.role;
+                    break;
+                }
+            }
         }
 
         if (!user) {
@@ -76,10 +99,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        const finalRole = effectiveRole || 'user';
+
         const token = jwt.sign(
             { 
                 id: user._id, 
-                role: role.toLowerCase(),
+                role: finalRole,
                 name: user.name,
                 email: user.email
             },
@@ -87,19 +112,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '4h' }
         );
 
-        // Record successful login in background (non-blocking for faster login response)
+        // Record successful login in background
         AuditLog.create({
             userId: user._id,
             userName: user.name,
-            userRole: role.toLowerCase(),
+            userRole: finalRole,
             action: 'Login',
-            details: `Successful login as ${role}`,
+            details: `Successful login as ${finalRole}`,
             ipAddress: req.ip || req.connection?.remoteAddress || 'Unknown'
         }).catch(err => console.error('Audit Log login recording error:', err));
 
         const userObj = { ...user };
         delete userObj.passwordHash;
-        userObj.role = role.toLowerCase();
+        userObj.role = finalRole;
 
         res.json({
             token,

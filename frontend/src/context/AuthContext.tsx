@@ -108,7 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (response) => response,
       (error) => {
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          logout();
+          // Do not trigger logout for login attempts
+          if (!error.config?.url?.includes('/api/auth/login')) {
+            logout();
+          }
         }
         return Promise.reject(error);
       }
