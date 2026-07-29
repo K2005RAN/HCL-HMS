@@ -715,39 +715,7 @@ export default function ConsultationView() {
                         </div>
                       )}
 
-                      {/* Standard Clinical Reference Ranges Guide (Eliminates remaining white space) */}
-                      <div className="pt-4 border-t border-border/50 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Standard Clinical Reference Ranges Guide</h4>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
-                            <span className="font-bold text-foreground block">Hemoglobin (Hb)</span>
-                            <p className="text-muted-foreground text-[11px]">13.5 - 17.5 g/dL (M) | 12.0 - 15.5 g/dL (F)</p>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
-                            <span className="font-bold text-foreground block">TLC / WBC Count</span>
-                            <p className="text-muted-foreground text-[11px]">4,000 - 11,000 /cu mm</p>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
-                            <span className="font-bold text-foreground block">Fasting Blood Sugar (FBS)</span>
-                            <p className="text-muted-foreground text-[11px]">70 - 99 mg/dL (Normal)</p>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
-                            <span className="font-bold text-foreground block">Platelet Count</span>
-                            <p className="text-muted-foreground text-[11px]">1.5 - 4.5 Lakhs /cu mm</p>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
-                            <span className="font-bold text-foreground block">Serum Creatinine</span>
-                            <p className="text-muted-foreground text-[11px]">0.7 - 1.3 mg/dL</p>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/40 space-y-0.5">
-                            <span className="font-bold text-foreground block">Total Cholesterol</span>
-                            <p className="text-muted-foreground text-[11px]">&lt; 200 mg/dL (Desirable)</p>
-                          </div>
-                        </div>
-                      </div>
+
                     </div>
                   </div>
                 </TabsContent>
