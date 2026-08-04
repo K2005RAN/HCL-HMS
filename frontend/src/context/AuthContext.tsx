@@ -38,26 +38,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('loginTime');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('loginTime');
     delete axios.defaults.headers.common['Authorization'];
   };
 
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    localStorage.setItem('loginTime', Date.now().toString());
+    sessionStorage.setItem('token', newToken);
+    sessionStorage.setItem('user', JSON.stringify(newUser));
+    sessionStorage.setItem('loginTime', Date.now().toString());
     axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
   };
 
   useEffect(() => {
-    // Check localStorage on load
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    const storedLoginTime = localStorage.getItem('loginTime');
+    // Check sessionStorage on load
+    const storedToken = sessionStorage.getItem('token');
+    const storedUser = sessionStorage.getItem('user');
+    const storedLoginTime = sessionStorage.getItem('loginTime');
 
     if (storedToken) {
       const now = Date.now();
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If loginTime was missing, auto-initialize it instead of logging out
       if (!loginTimestamp) {
         loginTimestamp = now;
-        localStorage.setItem('loginTime', now.toString());
+        sessionStorage.setItem('loginTime', now.toString());
       }
 
       // Auto logout ONLY if session timestamp exceeds 24 hours
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(res => {
         if (res.data) {
           setUser(res.data);
-          localStorage.setItem('user', JSON.stringify(res.data));
+          sessionStorage.setItem('user', JSON.stringify(res.data));
         }
       })
       .catch(err => {
@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) return;
 
     const interval = setInterval(() => {
-      const storedLoginTime = localStorage.getItem('loginTime');
+      const storedLoginTime = sessionStorage.getItem('loginTime');
       if (storedLoginTime) {
         const loginTimestamp = parseInt(storedLoginTime, 10);
         if (Date.now() - loginTimestamp > SESSION_TIMEOUT_MS) {
