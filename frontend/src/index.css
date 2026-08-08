@@ -171,3 +171,75 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
 }
+
+/* Statutory Certificate Print Optimization Rules */
+@page {
+  size: A4 portrait;
+  margin: 6mm 8mm;
+}
+
+@media print {
+  *, *::before, *::after {
+    box-sizing: border-box !important;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    overflow: visible !important;
+  }
+
+  /* Hide header, navigation, sidebar, interactive forms and buttons */
+  header, nav, aside, .print\:hidden, button {
+    display: none !important;
+  }
+
+  /* Force display dedicated print container */
+  .hidden.print\:block,
+  div.print\:block {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Preserve outer page borders and container outlines */
+  .print\:border-2 {
+    border: 2px solid #0f172a !important;
+  }
+  .print\:border-4 {
+    border: 3px double #0f172a !important;
+  }
+
+  /* Reset box shadows for print */
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  /* Ensure text never overflows container bounds */
+  p, span, div, td, th {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* Single A4 page fit wrapper */
+  .print-page-a4 {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

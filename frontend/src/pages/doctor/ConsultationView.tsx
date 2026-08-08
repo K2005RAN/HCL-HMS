@@ -440,100 +440,13 @@ export default function ConsultationView() {
         <div className="lg:col-span-2">
           <Card className="h-full border-border/60 shadow-sm">
             <CardContent className="p-0">
-              <Tabs defaultValue="diagnosis" className="w-full h-full">
+              <Tabs defaultValue="lab" className="w-full h-full">
                 <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
+                  <TabsTrigger value="lab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6 font-semibold">Lab Test Orders</TabsTrigger>
                   <TabsTrigger value="diagnosis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6 font-semibold">Diagnosis</TabsTrigger>
                   <TabsTrigger value="prescription" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6 font-semibold">Prescription</TabsTrigger>
-                  <TabsTrigger value="lab" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3 px-6 font-semibold">Lab Test Orders</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="diagnosis" className="p-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label className="font-semibold text-foreground">Presenting Symptoms</Label>
-                    <Textarea 
-                      placeholder="e.g. Fever, Cough, Headache..." 
-                      className="h-20" 
-                      value={symptoms} 
-                      onChange={e => setSymptoms(e.target.value)} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-semibold text-foreground">Primary Diagnosis *</Label>
-                    <Input 
-                      placeholder="Enter primary clinical diagnosis..." 
-                      value={diagnosis} 
-                      onChange={e => setDiagnosis(e.target.value)} 
-                      className="h-11 font-medium"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-semibold text-foreground">Doctor's Notes & Advice</Label>
-                    <Textarea 
-                      placeholder="Additional clinical notes, dietary advice, follow-up recommendations..." 
-                      className="h-32" 
-                      value={notes} 
-                      onChange={e => setNotes(e.target.value)} 
-                    />
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="prescription" className="p-6 space-y-6">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-12 gap-3 items-end">
-                      <div className="col-span-5 space-y-2">
-                        <Label className="font-semibold text-xs text-foreground">Medicine Name</Label>
-                        <Input placeholder="e.g. Paracetamol 500mg" value={medInput.medicineName} onChange={e => setMedInput({...medInput, medicineName: e.target.value})} />
-                      </div>
-                      <div className="col-span-3 space-y-2">
-                        <Label className="font-semibold text-xs text-foreground">Dosage</Label>
-                        <Input placeholder="e.g. 1-0-1" value={medInput.dosage} onChange={e => setMedInput({...medInput, dosage: e.target.value})} />
-                      </div>
-                      <div className="col-span-3 space-y-2">
-                        <Label className="font-semibold text-xs text-foreground">Duration</Label>
-                        <Input placeholder="e.g. 5 Days" value={medInput.duration} onChange={e => setMedInput({...medInput, duration: e.target.value})} />
-                      </div>
-                      <div className="col-span-1">
-                        <Button type="button" onClick={handleAddMedicine} className="w-full bg-primary hover:bg-primary/90">
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-
-                    {prescription.length > 0 ? (
-                      <div className="border rounded-xl overflow-hidden mt-4">
-                        <table className="w-full text-sm text-left">
-                          <thead className="bg-muted/40 text-muted-foreground text-xs uppercase">
-                            <tr>
-                              <th className="py-2.5 px-4 font-semibold">Medicine</th>
-                              <th className="py-2.5 px-4 font-semibold">Dosage</th>
-                              <th className="py-2.5 px-4 font-semibold">Duration</th>
-                              <th className="py-2.5 px-4 font-semibold text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border">
-                            {prescription.map((med, idx) => (
-                              <tr key={idx}>
-                                <td className="py-2.5 px-4 font-medium text-foreground">{med.medicineName}</td>
-                                <td className="py-2.5 px-4 text-muted-foreground">{med.dosage}</td>
-                                <td className="py-2.5 px-4 text-muted-foreground">{med.duration}</td>
-                                <td className="py-2.5 px-4 text-right">
-                                  <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicine(idx)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-sm text-muted-foreground border border-dashed rounded-xl">
-                        No prescription items added yet. Fill in medicine details above and click Add.
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
                 <TabsContent value="lab" className="p-6 space-y-6">
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -717,6 +630,93 @@ export default function ConsultationView() {
 
 
                     </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="diagnosis" className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-foreground">Presenting Symptoms</Label>
+                    <Textarea 
+                      placeholder="e.g. Fever, Cough, Headache..." 
+                      className="h-20" 
+                      value={symptoms} 
+                      onChange={e => setSymptoms(e.target.value)} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-foreground">Primary Diagnosis *</Label>
+                    <Input 
+                      placeholder="Enter primary clinical diagnosis..." 
+                      value={diagnosis} 
+                      onChange={e => setDiagnosis(e.target.value)} 
+                      className="h-11 font-medium"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-foreground">Doctor's Notes & Advice</Label>
+                    <Textarea 
+                      placeholder="Additional clinical notes, dietary advice, follow-up recommendations..." 
+                      className="h-32" 
+                      value={notes} 
+                      onChange={e => setNotes(e.target.value)} 
+                    />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="prescription" className="p-6 space-y-6">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-12 gap-3 items-end">
+                      <div className="col-span-5 space-y-2">
+                        <Label className="font-semibold text-xs text-foreground">Medicine Name</Label>
+                        <Input placeholder="e.g. Paracetamol 500mg" value={medInput.medicineName} onChange={e => setMedInput({...medInput, medicineName: e.target.value})} />
+                      </div>
+                      <div className="col-span-3 space-y-2">
+                        <Label className="font-semibold text-xs text-foreground">Dosage</Label>
+                        <Input placeholder="e.g. 1-0-1" value={medInput.dosage} onChange={e => setMedInput({...medInput, dosage: e.target.value})} />
+                      </div>
+                      <div className="col-span-3 space-y-2">
+                        <Label className="font-semibold text-xs text-foreground">Duration</Label>
+                        <Input placeholder="e.g. 5 Days" value={medInput.duration} onChange={e => setMedInput({...medInput, duration: e.target.value})} />
+                      </div>
+                      <div className="col-span-1">
+                        <Button type="button" onClick={handleAddMedicine} className="w-full bg-primary hover:bg-primary/90">
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+
+                    {prescription.length > 0 ? (
+                      <div className="border rounded-xl overflow-hidden mt-4">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-muted/40 text-muted-foreground text-xs uppercase">
+                            <tr>
+                              <th className="py-2.5 px-4 font-semibold">Medicine</th>
+                              <th className="py-2.5 px-4 font-semibold">Dosage</th>
+                              <th className="py-2.5 px-4 font-semibold">Duration</th>
+                              <th className="py-2.5 px-4 font-semibold text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {prescription.map((med, idx) => (
+                              <tr key={idx}>
+                                <td className="py-2.5 px-4 font-medium text-foreground">{med.medicineName}</td>
+                                <td className="py-2.5 px-4 text-muted-foreground">{med.dosage}</td>
+                                <td className="py-2.5 px-4 text-muted-foreground">{med.duration}</td>
+                                <td className="py-2.5 px-4 text-right">
+                                  <Button variant="ghost" size="icon" onClick={() => handleRemoveMedicine(idx)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-sm text-muted-foreground border border-dashed rounded-xl">
+                        No prescription items added yet. Fill in medicine details above and click Add.
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>

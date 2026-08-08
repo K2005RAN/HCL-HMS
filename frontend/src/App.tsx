@@ -11,6 +11,9 @@ import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import DoctorHistoryPage from './pages/doctor/DoctorHistoryPage';
 import ConsultationView from './pages/doctor/ConsultationView';
 import ConsultationHistoryView from './pages/doctor/ConsultationHistoryView';
+import { FormOWizard } from './pages/doctor/FormOWizard';
+import { Form32Generator } from './pages/doctor/Form32Generator';
+import { Form21Register } from './pages/doctor/Form21Register';
 import PharmacyDashboard from './pages/pharmacy/PharmacyDashboard';
 import IssueMedicine from './pages/pharmacy/IssueMedicine';
 import LaboratoryDashboard from './pages/lab/LaboratoryDashboard';
@@ -49,10 +52,13 @@ function App() {
                 <Route path="appointments" element={<AppointmentCalendar />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'doctor']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'doctor', 'staff']} />}>
                 <Route path="doctor-dashboard" element={<DoctorDashboard />} />
                 <Route path="doctor-history" element={<DoctorHistoryPage />} />
                 <Route path="consultation/:appointmentId" element={<ConsultationView />} />
+                <Route path="ohs/form-o" element={<FormOWizard />} />
+                <Route path="ohs/form-32" element={<Form32Generator />} />
+                <Route path="ohs/form-21" element={<Form21Register />} />
               </Route>
               
               <Route element={<ProtectedRoute allowedRoles={['admin', 'doctor', 'patient', 'employee', 'staff']} />}>

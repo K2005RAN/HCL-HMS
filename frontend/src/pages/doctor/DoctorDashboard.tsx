@@ -61,11 +61,12 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     const searchGlobalHistory = async () => {
-      if (searchPhone.length >= 3) {
+      const query = searchPhone.trim();
+      if (query.length >= 2) {
         setHistoryLoading(true);
         try {
           // First find the patient
-          const patientRes = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${searchPhone}`, {
+          const patientRes = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${encodeURIComponent(query)}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -82,7 +83,7 @@ export default function DoctorDashboard() {
         } finally {
           setHistoryLoading(false);
         }
-      } else if (searchPhone.length === 0) {
+      } else if (query.length === 0) {
         // Reset to doctor's own history
         setHistoryLoading(true);
         axios.get(`${API_BASE_URL}/api/doctor/history`, {
@@ -93,7 +94,7 @@ export default function DoctorDashboard() {
     
     const timeoutId = setTimeout(() => {
       searchGlobalHistory();
-    }, 500);
+    }, 400);
     return () => clearTimeout(timeoutId);
   }, [searchPhone, token]);
 
@@ -310,17 +311,47 @@ export default function DoctorDashboard() {
 
         <motion.div variants={itemVariants}>
           <Card className="glass border-border/50 shadow-xl overflow-hidden h-full">
-            <CardHeader className="border-b border-border/50 bg-muted/20">
-              <CardTitle>Quick Actions</CardTitle>
+            <CardHeader className="border-b border-border/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <CardTitle className="text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-emerald-600" />
+                Statutory OHS Forms Suite
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <Button variant="outline" className="w-full justify-start h-14 rounded-xl hover:scale-105 transition-all bg-background/50 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 dark:hover:bg-blue-950 dark:hover:border-blue-800">
-                <FileText className="mr-3 h-5 w-5 text-blue-500" />
-                <span className="font-semibold">Write Prescription</span>
+            <CardContent className="p-6 space-y-3">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/ohs/form-o')}
+                className="w-full justify-start h-14 rounded-xl hover:scale-105 transition-all bg-background/50 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 text-emerald-900 font-bold"
+              >
+                <FileText className="mr-3 h-5 w-5 text-emerald-600" />
+                <div className="text-left">
+                  <p className="font-bold text-xs uppercase">Form 'O' (Mines Rules 29B)</p>
+                  <p className="text-[11px] text-muted-foreground font-normal">5-Page Medical Exam (Triplicate)</p>
+                </div>
               </Button>
-              <Button variant="outline" className="w-full justify-start h-14 rounded-xl hover:scale-105 transition-all bg-background/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 dark:hover:bg-emerald-950 dark:hover:border-emerald-800">
-                <Activity className="mr-3 h-5 w-5 text-emerald-500" />
-                <span className="font-semibold">Issue Fitness Certificate</span>
+
+              <Button
+                variant="outline"
+                onClick={() => navigate('/ohs/form-32')}
+                className="w-full justify-start h-14 rounded-xl hover:scale-105 transition-all bg-background/50 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 text-emerald-900 font-bold"
+              >
+                <Activity className="mr-3 h-5 w-5 text-emerald-600" />
+                <div className="text-left">
+                  <p className="font-bold text-xs uppercase">Form 32 (Dangerous Ops)</p>
+                  <p className="text-[11px] text-muted-foreground font-normal">Factories Act Rule 107 & Counterfoil</p>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => navigate('/ohs/form-21')}
+                className="w-full justify-start h-14 rounded-xl hover:scale-105 transition-all bg-background/50 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 text-emerald-900 font-bold"
+              >
+                <Users className="mr-3 h-5 w-5 text-emerald-600" />
+                <div className="text-left">
+                  <p className="font-bold text-xs uppercase">Form '21' Health Register</p>
+                  <p className="text-[11px] text-muted-foreground font-normal">15-Column Statutory Plant Register</p>
+                </div>
               </Button>
             </CardContent>
           </Card>

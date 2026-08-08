@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Search, Menu, User as UserIcon, Shield, Mail, LogOut, X, CheckCircle2, Phone, Building, Pencil, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -89,14 +90,14 @@ export function TopNavbar() {
             </div>
           </Button>
 
-          {/* User Details Modal Overlay */}
-          {isProfileModalOpen && (
+          {/* User Details Modal Overlay - Rendered via Portal at body level to avoid header positioning stacking context */}
+          {isProfileModalOpen && createPortal(
             <div 
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
               onClick={() => setIsProfileModalOpen(false)}
             >
               <div 
-                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden relative text-slate-900 dark:text-white"
+                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto relative text-slate-900 dark:text-white my-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Close Button */}
@@ -209,10 +210,12 @@ export function TopNavbar() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       </div>
     </header>
   );
 }
+

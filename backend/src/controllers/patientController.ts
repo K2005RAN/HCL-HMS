@@ -5,6 +5,8 @@ import MedicalRecord from '../models/MedicalRecord';
 import LabTest from '../models/LabTest';
 import { AuthRequest } from '../middlewares/authMiddleware';
 
+import Invoice from '../models/Invoice';
+
 // @route   GET /api/patient/dashboard
 // @desc    Get patient profile and medical history
 export const getPatientDashboard = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -55,6 +57,10 @@ export const getPatientDashboard = async (req: AuthRequest, res: Response): Prom
             ? await LabTest.find({ $or: queryOr }).lean().catch(() => [])
             : await LabTest.find().limit(20).lean().catch(() => []);
 
+        const invoices = queryOr.length > 0
+            ? await Invoice.find({ $or: queryOr }).sort({ createdAt: -1 }).lean().catch(() => [])
+            : await Invoice.find().limit(20).sort({ createdAt: -1 }).lean().catch(() => []);
+
         const historyWithLabStatus = (medicalHistory || []).map((record: any) => {
             const pIdStr = record.patientId?._id?.toString() || record.patientId?.toString();
             const pTests = (allLabTests || []).filter((lt: any) => lt.patientId?.toString() === pIdStr);
@@ -75,10 +81,21 @@ export const getPatientDashboard = async (req: AuthRequest, res: Response): Prom
             };
         });
 
+        const isEmployee = !!(patientProfile?.employeeId || patientProfile?.employeeCode || (req.user?.role === 'employee'));
+        const enrichedProfile = {
+            ...(patientProfile || {}),
+            name: patientProfile?.name || req.user?.name || 'Patient',
+            email: patientProfile?.email || userEmail || '',
+            role: req.user?.role || 'patient',
+            patientType: isEmployee ? 'Employee' : 'General',
+            isEmployee
+        };
+
         res.json({
-            profile: patientProfile || { name: req.user?.name || 'Patient', email: userEmail, role: 'patient' },
+            profile: enrichedProfile,
             history: historyWithLabStatus,
-            labTests: allLabTests || []
+            labTests: allLabTests || [],
+            invoices: invoices || []
         });
     } catch (error: any) {
         console.error('getPatientDashboard error:', error);

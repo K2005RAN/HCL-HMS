@@ -21,6 +21,7 @@ export interface IMedicalRecord extends Document {
         dosage: string;
         duration: string;
         instructions: string;
+        price?: number;
     }[];
     labRequests: string[];
     followUpDate?: Date;
@@ -48,7 +49,8 @@ const MedicalRecordSchema: Schema = new Schema({
         medicineName: { type: String, required: true },
         dosage: { type: String, required: true },
         duration: { type: String, required: true },
-        instructions: { type: String }
+        instructions: { type: String },
+        price: { type: Number, default: 0 }
     }],
     labRequests: [{ type: String }],
     followUpDate: { type: Date },

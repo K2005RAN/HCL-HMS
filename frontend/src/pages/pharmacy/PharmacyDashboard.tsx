@@ -94,19 +94,40 @@ export default function PharmacyDashboard() {
     }
   };
 
+  const [medicinePrices, setMedicinePrices] = useState<{ [key: number]: number }>({});
+
+  const handleOpenDispenseModal = (record: any) => {
+    setSelectedRecord(record);
+    const initialPrices: { [key: number]: number } = {};
+    if (record.prescription && Array.isArray(record.prescription)) {
+      record.prescription.forEach((m: any, idx: number) => {
+        initialPrices[idx] = m.price || 150; // default estimated price if not set
+      });
+    }
+    setMedicinePrices(initialPrices);
+  };
+
   const handleDispenseAndBill = async () => {
     if (!selectedRecord) return;
     setDispensing(true);
+
+    const pricesArray = selectedRecord.prescription?.map((m: any, idx: number) => ({
+      medicineName: m.medicineName,
+      price: Number(medicinePrices[idx]) || 0
+    })) || [];
+
+    const totalCost = Object.values(medicinePrices).reduce((sum, val) => sum + (Number(val) || 0), 0);
+
     try {
       await axios.post(`${API_BASE_URL}/api/pharmacy/dispense-and-bill`, {
         recordId: selectedRecord._id,
-        billedAmount: billingAmount,
-        paymentMethod
+        medicinesWithPrices: pricesArray,
+        totalBilledAmount: totalCost
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert(`Prescription for ${selectedRecord.patientId?.name || 'patient'} dispensed & billed successfully! Invoice generated.`);
+      alert(`Prescription for ${selectedRecord.patientId?.name || 'patient'} dispensed successfully! Medicine rates (Total: ₹${totalCost}) saved and routed to Central Billing.`);
       setSelectedRecord(null);
       fetchPrescriptions();
     } catch (error: any) {
@@ -285,15 +306,10 @@ export default function PharmacyDashboard() {
                             <div className="flex items-center gap-2">
                               {!isDispensed ? (
                                 <Button 
-                                  onClick={() => {
-                                    setSelectedRecord(record);
-                                    // calculate default billing amount based on medicine count
-                                    const total = (record.prescription?.length || 1) * 120;
-                                    setBillingAmount(total);
-                                  }}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:scale-105 transition-all font-semibold"
+                                  onClick={() => handleOpenDispenseModal(record)}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:scale-105 transition-all font-semibold text-xs"
                                 >
-                                  <IndianRupee className="mr-1.5 h-4 w-4" /> Dispense & Generate Bill
+                                  <Pill className="mr-1.5 h-4 w-4" /> Dispense & Set Medicine Rates
                                 </Button>
                               ) : (
                                 <Button 
@@ -441,45 +457,42 @@ export default function PharmacyDashboard() {
             </div>
 
             <div className="space-y-4 text-sm">
-              <div className="bg-muted/20 p-3.5 rounded-xl border space-y-2">
-                <span className="font-semibold text-xs text-muted-foreground uppercase">Prescribed Medicines summary</span>
-                <ul className="divide-y divide-border/40 text-xs">
+              <div className="bg-muted/20 p-3.5 rounded-xl border space-y-3">
+                <span className="font-bold text-xs text-muted-foreground uppercase tracking-wider block">Set Rates for Prescribed Medicines</span>
+                <div className="divide-y divide-border/40 space-y-2">
                   {selectedRecord.prescription?.map((m: any, idx: number) => (
-                    <li key={idx} className="py-1.5 flex justify-between">
-                      <span className="font-bold">{m.medicineName} ({m.dosage})</span>
-                      <span className="text-muted-foreground">{m.duration}</span>
-                    </li>
+                    <div key={idx} className="pt-2 flex items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="font-bold text-foreground">{m.medicineName} ({m.dosage})</div>
+                        <div className="text-muted-foreground">{m.duration} {m.instructions ? `• ${m.instructions}` : ''}</div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 w-32">
+                        <span className="font-bold text-muted-foreground">₹</span>
+                        <Input 
+                          type="number"
+                          value={medicinePrices[idx] !== undefined ? medicinePrices[idx] : 150}
+                          onChange={(e) => setMedicinePrices({ ...medicinePrices, [idx]: Number(e.target.value) || 0 })}
+                          className="h-8 text-xs bg-background font-bold border-primary/40 text-right"
+                          placeholder="Rate"
+                        />
+                      </div>
+                    </div>
                   ))}
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="billingAmount">Total Billing Amount (₹)</Label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">₹</span>
-                  <Input 
-                    id="billingAmount" 
-                    type="number"
-                    value={billingAmount}
-                    onChange={e => setBillingAmount(parseFloat(e.target.value) || 0)}
-                    className="pl-8 bg-background/50 font-bold text-lg"
-                  />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="paymentMethod">Payment Method</Label>
-                <select 
-                  id="paymentMethod"
-                  value={paymentMethod}
-                  onChange={e => setPaymentMethod(e.target.value)}
-                  className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="UPI">UPI / Digital Transfer</option>
-                  <option value="Card">Credit / Debit Card</option>
-                  <option value="Insurance">Corporate / Insurance Waived</option>
-                </select>
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Total Medicine Cost</span>
+                  <div className="text-[11px] text-muted-foreground">Sum of medicine rates entered above</div>
+                </div>
+                <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                  ₹ {Object.values(medicinePrices).reduce((s, v) => s + (Number(v) || 0), 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-xs text-muted-foreground italic">
+                ℹ️ Once dispensed, these medicine rates will be combined with Doctor Consultation (₹500) and Lab Reports (₹300 ea) in Central Billing / Salary Deduction.
               </div>
             </div>
 
@@ -487,10 +500,10 @@ export default function PharmacyDashboard() {
               <Button variant="outline" onClick={() => setSelectedRecord(null)}>Cancel</Button>
               <Button 
                 className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md font-semibold"
-                disabled={dispensing || billingAmount <= 0}
+                disabled={dispensing}
                 onClick={handleDispenseAndBill}
               >
-                {dispensing ? 'Processing...' : 'Confirm Dispensing & Create Invoice'}
+                {dispensing ? 'Dispensing...' : 'Dispense Prescription & Save Rates'}
               </Button>
             </div>
           </motion.div>

@@ -24,6 +24,84 @@ export default function AppointmentCalendar() {
   const [searchPhone, setSearchPhone] = useState('');
   const [patientFound, setPatientFound] = useState<any>(null);
   
+  const [editablePatient, setEditablePatient] = useState({
+    name: '',
+    age: '',
+    gender: 'Male',
+    bloodGroup: '',
+    phone: '',
+    email: '',
+    emergencyContact: '',
+    chronicDiseases: '',
+    allergies: '',
+    address: ''
+  });
+  const [savingPatientEdits, setSavingPatientEdits] = useState(false);
+  const [patientEditSavedMsg, setPatientEditSavedMsg] = useState(false);
+
+  const sanitizePhone = (val?: string): string => {
+    if (!val) return '';
+    const trimmed = val.trim();
+    if (/^[a-zA-Z]+$/.test(trimmed) || trimmed === '0000000000' || trimmed.toLowerCase() === 'unknown' || trimmed.toLowerCase() === 'n/a' || trimmed.toLowerCase() === 'na') {
+      return '';
+    }
+    return trimmed;
+  };
+
+  const sanitizeText = (val?: string): string => {
+    if (!val) return '';
+    const trimmed = val.trim();
+    if (trimmed.toLowerCase() === 'unknown' || trimmed.toLowerCase() === 'n/a' || trimmed.toLowerCase() === 'na' || trimmed === '0000000000') {
+      return '';
+    }
+    return trimmed;
+  };
+
+  useEffect(() => {
+    if (patientFound) {
+      const calculatedAge = patientFound.dob
+        ? Math.floor((new Date().getTime() - new Date(patientFound.dob).getTime()) / 31557600000)
+        : (patientFound.age || '');
+      
+      setEditablePatient({
+        name: patientFound.name || '',
+        age: String(calculatedAge),
+        gender: patientFound.gender || 'Male',
+        bloodGroup: patientFound.bloodGroup || '',
+        phone: sanitizePhone(patientFound.phone),
+        email: sanitizeText(patientFound.email),
+        emergencyContact: sanitizePhone(patientFound.emergencyContact),
+        chronicDiseases: Array.isArray(patientFound.chronicDiseases) ? patientFound.chronicDiseases.join(', ') : (patientFound.chronicDiseases || ''),
+        allergies: Array.isArray(patientFound.allergies) ? patientFound.allergies.join(', ') : (patientFound.allergies || ''),
+        address: sanitizeText(patientFound.address)
+      });
+    } else {
+      setEditablePatient({
+        name: '', age: '', gender: 'Male', bloodGroup: '', phone: '', email: '', emergencyContact: '', chronicDiseases: '', allergies: '', address: ''
+      });
+    }
+  }, [patientFound]);
+
+  const handleSavePatientEdits = async () => {
+    if (!patientFound?._id) return;
+    setSavingPatientEdits(true);
+    try {
+      const updateRes = await axios.put(
+        `${API_BASE_URL}/api/appointments/meta/patient/${patientFound._id}`,
+        editablePatient,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPatientFound(updateRes.data);
+      setPatientEditSavedMsg(true);
+      setTimeout(() => setPatientEditSavedMsg(false), 3000);
+    } catch (err: any) {
+      console.error("Failed to update patient details", err);
+      alert("Error updating patient details: " + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingPatientEdits(false);
+    }
+  };
+  
   const [registering, setRegistering] = useState(false);
   const [newPatientData, setNewPatientData] = useState({
     name: '',
@@ -79,9 +157,10 @@ export default function AppointmentCalendar() {
 
   useEffect(() => {
     const searchPatient = async () => {
-      if (searchPhone.length >= 3) {
+      const query = searchPhone.trim();
+      if (query.length >= 2) {
         try {
-          const res = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${searchPhone}`, {
+          const res = await axios.get(`${API_BASE_URL}/api/appointments/meta/search-patient?query=${encodeURIComponent(query)}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           setPatientFound(res.data);
@@ -98,13 +177,22 @@ export default function AppointmentCalendar() {
     
     const timeoutId = setTimeout(() => {
       searchPatient();
-    }, 500);
+    }, 400);
     return () => clearTimeout(timeoutId);
   }, [searchPhone, token]);
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (patientFound?._id) {
+        // Auto-save any edited patient details
+        await axios.put(
+          `${API_BASE_URL}/api/appointments/meta/patient/${patientFound._id}`,
+          editablePatient,
+          { headers: { Authorization: `Bearer ${token}` } }
+        ).catch(err => console.warn("Could not auto-save patient edits", err));
+      }
+
       await axios.post(`${API_BASE_URL}/api/appointments`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -454,23 +542,155 @@ export default function AppointmentCalendar() {
                     </div>
                   </div>
 
-                  {/* Auto-filled details */}
+                  {/* Auto-filled details (Fully Editable) */}
                   {patientFound ? (
-                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-emerald-700 dark:text-emerald-400">{patientFound.name} ({patientFound.gender})</span>
-                        <span className="text-xs font-semibold px-2 py-1 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-full">
-                          Age: {patientFound.dob ? Math.floor((new Date().getTime() - new Date(patientFound.dob).getTime()) / 31557600000) : 'N/A'}
-                        </span>
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-4 shadow-sm">
+                      <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-emerald-600 text-white font-bold text-xs px-2.5 py-0.5 rounded-full">
+                            Patient Verified
+                          </span>
+                          <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                            ID: {patientFound.patientId || patientFound.employeeId || 'N/A'}
+                          </span>
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handleSavePatientEdits}
+                          disabled={savingPatientEdits}
+                          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white border-none font-bold text-xs shadow-sm transition-all px-3"
+                        >
+                          {savingPatientEdits ? 'Saving...' : patientEditSavedMsg ? '✓ Saved!' : 'Save Details'}
+                        </Button>
                       </div>
-                      {(patientFound.chronicDiseases?.length > 0 || patientFound.allergies?.length > 0) ? (
-                         <div className="text-xs text-muted-foreground mt-2 grid grid-cols-2 gap-2">
-                           {patientFound.chronicDiseases?.length > 0 && <div><strong className="text-foreground">Issues:</strong> {patientFound.chronicDiseases.join(', ')}</div>}
-                           {patientFound.allergies?.length > 0 && <div><strong className="text-foreground">Allergies:</strong> {patientFound.allergies.join(', ')}</div>}
-                         </div>
-                      ) : (
-                         <div className="text-xs text-muted-foreground mt-1">No known chronic issues or allergies.</div>
-                      )}
+
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        {/* Full Name */}
+                        <div className="space-y-1 col-span-2 sm:col-span-1">
+                          <Label className="text-xs font-bold text-foreground">Full Name</Label>
+                          <Input
+                            className="h-9 text-sm bg-background border-emerald-500/40"
+                            value={editablePatient.name}
+                            onChange={e => setEditablePatient({...editablePatient, name: e.target.value})}
+                          />
+                        </div>
+
+                        {/* Mobile Number */}
+                        <div className="space-y-1 col-span-2 sm:col-span-1">
+                          <Label className="text-xs font-bold text-foreground">Mobile Number</Label>
+                          <Input
+                            className="h-9 text-sm bg-background border-emerald-500/40"
+                            placeholder="Enter 10-digit mobile number"
+                            value={editablePatient.phone}
+                            onChange={e => setEditablePatient({...editablePatient, phone: e.target.value})}
+                          />
+                        </div>
+
+                        {/* Age */}
+                        <div className="space-y-1 col-span-1">
+                          <Label className="text-xs font-bold text-foreground">Age (Years)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="120"
+                            className="h-9 text-sm bg-background border-emerald-500/40 font-bold text-emerald-700 dark:text-emerald-300"
+                            value={editablePatient.age}
+                            onChange={e => setEditablePatient({...editablePatient, age: e.target.value})}
+                          />
+                        </div>
+
+                        {/* Gender */}
+                        <div className="space-y-1 col-span-1">
+                          <Label className="text-xs font-bold text-foreground">Gender</Label>
+                          <select
+                            className="flex h-9 w-full rounded-md border border-emerald-500/40 bg-background px-3 py-1 text-sm shadow-xs focus:ring-emerald-500"
+                            value={editablePatient.gender}
+                            onChange={e => setEditablePatient({...editablePatient, gender: e.target.value})}
+                          >
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+
+                        {/* Blood Group */}
+                        <div className="space-y-1 col-span-1">
+                          <Label className="text-xs font-bold text-foreground">Blood Group</Label>
+                          <select
+                            className="flex h-9 w-full rounded-md border border-emerald-500/40 bg-background px-3 py-1 text-sm shadow-xs focus:ring-emerald-500"
+                            value={editablePatient.bloodGroup}
+                            onChange={e => setEditablePatient({...editablePatient, bloodGroup: e.target.value})}
+                          >
+                            <option value="">Unknown</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                          </select>
+                        </div>
+
+                        {/* Emergency Contact */}
+                        <div className="space-y-1 col-span-1">
+                          <Label className="text-xs font-bold text-foreground">Emergency Contact</Label>
+                          <Input
+                            className="h-9 text-sm bg-background border-emerald-500/40"
+                            placeholder="Emergency contact number"
+                            value={editablePatient.emergencyContact}
+                            onChange={e => setEditablePatient({...editablePatient, emergencyContact: e.target.value})}
+                          />
+                        </div>
+
+                        {/* Email Address */}
+                        <div className="space-y-1 col-span-2">
+                          <Label className="text-xs font-bold text-foreground">Email Address</Label>
+                          <Input
+                            type="email"
+                            className="h-9 text-sm bg-background border-emerald-500/40"
+                            value={editablePatient.email}
+                            onChange={e => setEditablePatient({...editablePatient, email: e.target.value})}
+                          />
+                        </div>
+
+                        {/* Chronic Diseases */}
+                        <div className="space-y-1 col-span-2">
+                          <Label className="text-xs font-bold text-foreground">Past Issues / Chronic Diseases</Label>
+                          <Input
+                            className="h-9 text-sm bg-background border-emerald-500/40"
+                            placeholder="e.g. Asthma, Hypertension (comma separated)"
+                            value={editablePatient.chronicDiseases}
+                            onChange={e => setEditablePatient({...editablePatient, chronicDiseases: e.target.value})}
+                          />
+                        </div>
+
+                        {/* Allergies */}
+                        <div className="space-y-1 col-span-2">
+                          <Label className="text-xs font-bold text-foreground">Allergies</Label>
+                          <Input
+                            className="h-9 text-sm bg-background border-emerald-500/40"
+                            placeholder="e.g. Penicillin, Dust (comma separated)"
+                            value={editablePatient.allergies}
+                            onChange={e => setEditablePatient({...editablePatient, allergies: e.target.value})}
+                          />
+                        </div>
+
+                        {/* Address */}
+                        <div className="space-y-1 col-span-2">
+                          <Label className="text-xs font-bold text-foreground">Address</Label>
+                          <Input
+                            className="h-9 text-sm bg-background border-emerald-500/40"
+                            placeholder="City, Plant Location, or Full Address"
+                            value={editablePatient.address}
+                            onChange={e => setEditablePatient({...editablePatient, address: e.target.value})}
+                          />
+                        </div>
+                      </div>
                     </div>
                   ) : searchPhone.length >= 3 ? (
                     <div className="mt-4 p-4 rounded-xl bg-background border border-border shadow-sm">

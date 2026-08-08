@@ -24,7 +24,8 @@ import {
   ChevronRight,
   RefreshCw,
   ShieldCheck,
-  Printer
+  Printer,
+  Receipt
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api';
@@ -97,7 +98,13 @@ export default function PatientDashboard() {
     }
   }, [token]);
 
-  const { profile, history = [] } = data;
+  const { profile, history = [], invoices = [] } = data;
+
+  const isEmployee = 
+    profile?.patientType === 'Employee' || 
+    profile?.isEmployee === true || 
+    user?.role === 'employee' || 
+    Boolean(profile?.employeeId);
 
   // Filtered History Records
   const filteredHistory = useMemo(() => {
@@ -181,7 +188,16 @@ export default function PatientDashboard() {
             <UserCircle className="w-8 h-8 text-primary" />
           </div>
           <div>
-            <p className="font-bold text-lg">{profile?.name || user?.name || 'Employee'}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-lg">{profile?.name || user?.name || 'Patient'}</p>
+              <Badge variant="outline" className={
+                isEmployee 
+                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[10px] font-extrabold px-2 py-0' 
+                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-extrabold px-2 py-0'
+              }>
+                {isEmployee ? '🏢 Corporate Employee' : '👤 General Patient'}
+              </Badge>
+            </div>
             <p className="text-sm text-muted-foreground">ID: {profile?.patientId || 'PAT-0001'}</p>
           </div>
         </motion.div>
@@ -376,6 +392,88 @@ export default function PatientDashboard() {
                     Clear Search Filters
                   </Button>
                 )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* MY MEDICAL BILLS & VISIT INVOICES SECTION */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <Card className="glass border-border/50 shadow-xl overflow-hidden">
+          <CardHeader className="border-b border-border/50 bg-muted/20 py-4 px-6 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg font-extrabold text-foreground">
+              <Receipt className="w-5 h-5 text-emerald-500" /> My Medical Bills & Visit Charges
+            </CardTitle>
+            {isEmployee ? (
+              <Badge variant="outline" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 font-extrabold text-xs">
+                🏢 Corporate Salary Deduction
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-extrabold text-xs">
+                👤 General Patient Direct Payment
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent className="p-0">
+            {invoices.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow className="border-border/50">
+                      <TableHead className="font-bold py-3.5">Invoice No.</TableHead>
+                      <TableHead className="font-bold py-3.5">Visit Date</TableHead>
+                      <TableHead className="font-bold py-3.5">Lab Reports Bill (₹300 ea)</TableHead>
+                      <TableHead className="font-bold py-3.5">Medicine Charges</TableHead>
+                      <TableHead className="font-bold py-3.5">Consultation</TableHead>
+                      <TableHead className="text-right font-bold py-3.5">Total Bill</TableHead>
+                      <TableHead className="font-bold py-3.5">Payment Method & Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((inv: any) => {
+                      const isSalaryDed = inv.patientType === 'Employee' || inv.status === 'Salary Deduction' || inv.paymentMethod === 'Salary Deduction';
+
+                      return (
+                        <TableRow key={inv._id} className="border-border/50 hover:bg-muted/40 transition-colors">
+                          <TableCell className="font-extrabold text-foreground py-4 text-xs">
+                            {inv.invoiceNumber}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-4">
+                            {new Date(inv.date || inv.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="py-4 text-xs">
+                            <span className="font-bold text-foreground">₹ {inv.labCharges || 0}</span>
+                          </TableCell>
+                          <TableCell className="py-4 text-xs font-semibold text-foreground">
+                            ₹ {inv.medicineCharges || 0}
+                          </TableCell>
+                          <TableCell className="py-4 text-xs text-muted-foreground">
+                            ₹ {inv.consultationCharges || 500}
+                          </TableCell>
+                          <TableCell className="text-right font-black text-emerald-600 dark:text-emerald-400 py-4 text-base">
+                            ₹ {inv.totalAmount?.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="py-4">
+                            <Badge variant="outline" className={
+                              isSalaryDed ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 font-extrabold px-2.5 py-0.5 text-xs' :
+                              inv.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-extrabold px-2.5 py-0.5 text-xs' :
+                              'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-extrabold px-2.5 py-0.5 text-xs'
+                            }>
+                              {isSalaryDed ? '🏢 Deducted from Salary' : inv.status === 'Paid' ? `Paid (${inv.paymentMethod || 'Direct'})` : `${inv.status} (${inv.paymentMethod || 'Pending'})`}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground space-y-2">
+                <Receipt className="h-8 w-8 opacity-30 text-emerald-500" />
+                <p className="text-sm font-bold text-foreground">No visit invoices generated yet.</p>
+                <p className="text-xs text-muted-foreground">Completed visit bills, payment receipts, and billing records will be displayed here automatically.</p>
               </div>
             )}
           </CardContent>

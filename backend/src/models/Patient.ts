@@ -24,15 +24,15 @@ const PatientSchema: Schema = new Schema({
     name: { type: String, required: true },
     gender: { type: String, required: true },
     dob: { type: Date, required: true },
-    bloodGroup: { type: String },
-    phone: { type: String, required: true },
+    bloodGroup: { type: String, default: '' },
+    phone: { type: String, default: '' },
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
-    address: { type: String, required: true },
-    emergencyContact: { type: String, required: true },
+    address: { type: String, default: '' },
+    emergencyContact: { type: String, default: '' },
     chronicDiseases: [{ type: String }],
     allergies: [{ type: String }],
-    familyHistory: { type: String },
+    familyHistory: { type: String, default: '' },
     vaccinationHistory: [{ type: String }]
 }, {
     timestamps: true

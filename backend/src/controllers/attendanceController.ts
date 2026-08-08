@@ -136,7 +136,6 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
         }
 
         let staffMembers: any[] = [];
-        let employees: any[] = [];
         let doctors: any[] = [];
         let labUsers: any[] = [];
         let pharmacyUsers: any[] = [];
@@ -151,14 +150,6 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                     { email: regex }
                 ]
             }).select('-passwordHash');
-
-            employees = await Employee.find({
-                $or: [
-                    { employeeId: regex },
-                    { name: regex },
-                    { phone: regex }
-                ]
-            });
 
             doctors = await Doctor.find({
                 $or: [
@@ -187,7 +178,6 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
             }).select('-passwordHash');
         } else {
             staffMembers = await Staff.find().select('-passwordHash').sort({ createdAt: -1 });
-            employees = await Employee.find().sort({ createdAt: -1 });
             doctors = await Doctor.find().select('-passwordHash').sort({ createdAt: -1 });
             labUsers = await LabUser.find().select('-passwordHash').sort({ createdAt: -1 });
             pharmacyUsers = await PharmacyUser.find().select('-passwordHash').sort({ createdAt: -1 });
@@ -272,24 +262,6 @@ export const searchStaff = async (req: Request, res: Response): Promise<void> =>
                 department: p.department || 'Pharmacy',
                 role: 'Pharmacist',
                 phone: p.phone || 'N/A',
-                todayStatus: todayLog ? todayLog.status : 'Not Marked',
-                clockIn: todayLog ? todayLog.clockIn : null,
-                clockOut: todayLog ? todayLog.clockOut : null
-            });
-        });
-
-        // 5. Employees
-        employees.forEach(e => {
-            const eId = e.employeeId || `EMP-${e._id.toString().slice(-4)}`;
-            const todayLog = attendanceMap.get(eId);
-            results.push({
-                _id: e._id,
-                staffId: eId,
-                name: e.name,
-                email: e.email,
-                department: e.department || 'General',
-                role: e.designation || 'Employee',
-                phone: e.phone || 'N/A',
                 todayStatus: todayLog ? todayLog.status : 'Not Marked',
                 clockIn: todayLog ? todayLog.clockIn : null,
                 clockOut: todayLog ? todayLog.clockOut : null
@@ -530,7 +502,7 @@ export const getAdminAttendanceLogs = async (req: Request, res: Response): Promi
             : '0.0';
 
         const totalDbRecords = await Attendance.countDocuments();
-        const totalStaffCount = (await Staff.countDocuments()) + (await Employee.countDocuments()) + (await Doctor.countDocuments()) + (await LabUser.countDocuments()) + (await PharmacyUser.countDocuments());
+        const totalStaffCount = (await Staff.countDocuments()) + (await Doctor.countDocuments()) + (await LabUser.countDocuments()) + (await PharmacyUser.countDocuments());
 
         res.json({
             records,

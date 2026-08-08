@@ -17,6 +17,7 @@ import auditLogRoutes from './routes/auditLogRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import doctorRoutes from './routes/doctorRoutes';
 import patientRoutes from './routes/patientRoutes';
+import ohsRoutes from './routes/ohsRoutes';
 import { auditLogger } from './middlewares/auditMiddleware';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -65,6 +66,7 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/api/patient', patientRoutes);
+app.use('/api/ohs', ohsRoutes);
 
 app.get('/api/health', (req: Request, res: Response) => {
     res.status(200).json({ status: 'ok', message: 'HCI-HMS API is running' });

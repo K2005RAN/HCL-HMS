@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAppointments, createAppointment, updateAppointmentStatus, updateAppointmentVitals, getDoctors, getPatients, searchPatient } from '../controllers/appointmentController';
+import { getAppointments, createAppointment, updateAppointmentStatus, updateAppointmentVitals, getDoctors, getPatients, searchPatient, updatePatientMeta } from '../controllers/appointmentController';
 import { protect, authorize } from '../middlewares/authMiddleware';
 
 const router = Router();
@@ -9,6 +9,7 @@ router.use(protect); // All appointment routes require auth
 router.get('/meta/doctors', getDoctors);
 router.get('/meta/patients', getPatients);
 router.get('/meta/search-patient', searchPatient);
+router.put('/meta/patient/:id', updatePatientMeta);
 
 router.route('/')
     .get(getAppointments)
